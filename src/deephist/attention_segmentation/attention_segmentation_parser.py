@@ -1,0 +1,179 @@
+"""
+Supervised Config parser
+"""
+
+import configargparse
+
+from torchvision import models
+
+from src.exp_management.config import Config
+
+class AttentionSegmentationConfig(Config):
+    """
+    Defines the parameters for a supervised config
+    """
+
+    def parse_config(self,
+                     verbose: bool = False,
+                     testmode: bool = False
+                     ) -> configargparse.Namespace:
+
+        parser = configargparse.ArgumentParser(description='PyTorch Training',
+                                               default_config_files=self.config_paths)
+        parser.add_argument('-d', '--train-data', default=None,
+                            metavar='DIR', help='path to train dataset')
+        parser.add_argument('--test-data', default=None,
+                            metavar='DIR', help='path to test dataset. Optional.')
+        parser.add_argument('--vali-split', default=None, type=float, 
+                            help='ratio to split valiset from trainset')
+        parser.add_argument('--arch', metavar='ARCH', default='unet',
+                            choices=['unet', 'unetplusplus', 'deeplabv3',
+                                     'manet', 'linknet', 'fpn', 'pspnet',
+                                     'deeplabv3plus', 'pan'],
+                            help='segmentation model architecture')
+        parser.add_argument('--encoder', default='resnet50',
+                            choices= ['resnet18', 'resnet50', 'resnet101'])
+        parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
+                            help='number of data loading workers (default: 32)')
+        parser.add_argument('--epochs', default=100, type=int, metavar='N',
+                            help='number of total epochs to run')
+        parser.add_argument('-b', '--batch-size', default=512, type=int,
+                            metavar='N',
+                            help='mini-batch size (default: 512), this is the total '
+                                'batch size of all GPUs on the current node when '
+                                'using Data Parallel or Distributed Data Parallel')
+        parser.add_argument('--val-batch-size', default=512, type=int,
+                            help='mini-batch size for validation run')
+        parser.add_argument('--test-batch-size', default=None, type=int,
+                            help='mini-batch size for test run. If None, uses validation batch size.')
+        parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+                            metavar='LR', help='initial (base) learning rate', dest='lr')
+        parser.add_argument('--lr-gamma', default=0.95, type=float, help='gamma of exp learnign rate decay')
+        parser.add_argument('--adjust-lr', action='store_true', default=False,
+                            help='select to adjust learning rate.')
+        parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+                            help='momentum of SGD solver')
+        parser.add_argument('-p', '--print-freq', default=20, type=int,
+                            metavar='N', help='print frequency (default: 20)')
+        parser.add_argument('--seed', default=None, type=int,
+                            help='seed for initializing training. ')
+        parser.add_argument('--include-val-inference', action='store_true', default=False,
+                            help='select to apply inference on val data.')
+        parser.add_argument('--gpu', default=0, type=int,
+                            help='GPU to use.')
+        parser.add_argument('--ngpus', default=1, type=int,
+                            help='No GPU to use for cross-validation.')
+        parser.add_argument('--patch-sampling', default=None,
+                            choices=['over', 'under', 'overunder'],
+                            help='Choose wether train data should be over- or undersampled.'
+                            'overunder find as balance factor inbetween.')
+        parser.add_argument('--logdir', default='logdir', type=str, help='path to store logs.')
+        parser.add_argument('--label-map-file', default=None, type=str,
+                            help='path to label mapping json')
+        parser.add_argument('--patch-label-type', default='patch', type=str, choices= ['patch', 'image', 'mask'],
+                            help='Select which label you want to plot for each patch representation')
+        parser.add_argument('--pretrained', action='store_true',
+                            help='select to start training with Imagenet-pretrained weights')
+        parser.add_argument('--image-label-in-path', action='store_true',
+                            help='Select if wsi are stored in image label folder')
+        parser.add_argument('--exclude-classes', default=[], nargs="*", type=str,
+                            help='Select class indices of patch class to be excluded')
+        parser.add_argument('--include-classes', default=['0', '1', '2', '3', '7', '8', '9', '10', '13', '15', '16', '17'], nargs="*", type=str,
+                            help='Select class indices of patch class to be included')
+        parser.add_argument('--nfold', default=None, type=int,
+                            help='Select the number of cv folds. If nfold is set - '
+                            'val_ratio will be ignored.')
+        parser.add_argument('--draw-patches-per-class', default=None, type=int,
+                            help='Select a number how many patches shell be drawn from each WSI per class.'
+                                'If number exceeds existing patches per class in one wsi,'
+                                'all are drawn from this class')
+        parser.add_argument('--draw-patches-per-wsi', default=None, type=int,
+                            help='Select a number how many patches shell be drawn from each WSI.')
+        parser.add_argument('--hard-example-mining-ratio', type=float, default=None,
+                            help='Select ratio to apply hard example mining on every batch.'
+                            'Top ratio-percentage hardest examples are selected')
+        parser.add_argument('--hard-example-mining-switch', action='store_true',
+                            help='select to switch hem activation on every batch.')
+        parser.add_argument('--hard-example-mining-per-class', action='store_true',
+                            help='select to apply hem class-wise.')
+        parser.add_argument('--hue-aug-ratio', type=float, default=None,
+                            help='Select ratio for pytorch hue-transform in trainset.'
+                            'Top ratio-percentage hardest examples are selected')
+        parser.add_argument('--criterion', default=None, type=str,
+                            choices= ['cross_entropy', 'focal_tversky', 'dice', 'focal',
+                                      'focal+dice', 'focal+focal_tversky', 'ce+dice'],
+                            help='Select a loss function. If None, uses CrossEntropy')
+        parser.add_argument('--use-ce-weights', action='store_true',
+                            help='Set to use ce weights.')
+        parser.add_argument('--combine-criterion-after-epoch', default=None, type=int,
+                            help='Select epoch after which to start combining a combined criterion.')
+        parser.add_argument('--alpha', type=float, default=0.5,
+                            help='Loss alpha param')
+        parser.add_argument('--beta', type=float, default=0.5,
+                            help='Loss beta param')
+        parser.add_argument('--gamma', type=float, default=1,
+                            help='Loss gamma param')
+        parser.add_argument('--combine-weight', type=float, default=0.5,
+                            help='Loss combination weight.')
+        parser.add_argument('--weight-decay', type=float, default=0,
+                            help='Select weight decay for l2 regularization')
+        parser.add_argument('--normalize', action='store_true',
+                            help='set to apply normalization in pytorch transformation')
+        parser.add_argument('--freeze', action='store_true',
+                            help='select to freeze all weights but the fc ones')
+        parser.add_argument('--dropout', action='store_true',
+                            help='select to add dropout to fc')
+        parser.add_argument('--reload-model-folder', default=None, type=str,
+                            help='Provide model log folder to reload a trained model. Training step is ignored then.')
+        parser.add_argument('--evaluate-every', default=1, type=int,
+                            help='Select epoch steps after which the test and val data is evaluated.'
+                            'Select 0 to have a final evaluation on the best model only')
+        parser.add_argument('--warm-up-epochs', default=None, type=int,
+                            help='Select number of epochs without early stopping.')
+        parser.add_argument('--early-stopping-epochs', default=None, type=int,
+                            help='Select number of epochs without val loss improving to stop early.')
+        parser.add_argument('--merge-classes', default=[], type=int, nargs='+', action='append',
+                            help='Merge classes together. First class is kept. Per merge, provde a list of classes')
+        parser.add_argument('--overlay-polygons', action='store_true',
+                            help='Set to plot ground truth polygons. '
+                            'If set, prehist-config must be given in data root folder. Optional.')
+        parser.add_argument('--n-eval-wsis', default=None, type=int,
+                            help='Select number of wsis for in-training evaluation.')
+        parser.add_argument('--attention-on', action='store_true',
+                            help='Set to activate attention memory mechanism. Else, "normal" segmentation is performed.')
+        parser.add_argument('--embedding-dim', default=None, type=int,
+                            help='Select number of embedding dim. If None, memory is deactivated.')
+        parser.add_argument('--k-neighbours', default=None, type=int,
+                            help='Select number of neighbouring patches to attend to.')
+        parser.add_argument('--num-attention-heads', default=None, type=int,
+                            help='Select number of attention heads for MSA.')
+        parser.add_argument('--attention-hidden-dim', default=None, type=int,
+                            help='Select number of MSA hidden dimension (after linear proj.).')
+        parser.add_argument('--use-ln', action='store_true',
+                            help='Set to use layer normalization at MSA beginning.')
+        parser.add_argument('--use-pos-encoding', action='store_true',
+                            help='Set to use position encoding in MSA.')
+        parser.add_argument('--learn-pos-encoding', action='store_true',
+                            help='Set to activate learnable position encoding.')
+        parser.add_argument('--use-linear-proj', action='store_true',
+                            help='Set to use apply linear proj to attention hidden dim before MSA.')
+        parser.add_argument('--use-self-attention', action='store_true',
+                            help='Set to consider central patch with respect to neighbour patches in MSA.')
+        parser.add_argument('--log-details', action='store_true',
+                            help='Set to log computation-intense metrics.')
+        parser.add_argument('--memory-to-gpu', action='store_true',
+                            help='Set to move the embedding memory to gpu.')
+        parser.add_argument('--performance-metric', default='loss', type=str,
+                            choices= ['loss', 'dice'],
+                            help='Select a performance metric for early stopping and model selection.')
+        parser.add_argument('--multiscale-on', action='store_true',
+                            help='Set to run with multiscale model from Schmitz et al.')
+     
+
+        args, unknown = parser.parse_known_args()
+
+        if not testmode and len(unknown) > 0:
+            raise Exception(f"Unknonw args {unknown}")
+        if verbose:
+            print(args)
+        return args

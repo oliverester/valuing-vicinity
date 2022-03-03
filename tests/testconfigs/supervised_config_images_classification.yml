@@ -1,0 +1,16 @@
+a: resnet50
+gpu: 1
+workers: 16
+batch-size: 128
+epochs: 1
+train-data: tests/testdata/PDL1
+patch-label-type: image
+include-classes: [9] #tumor vital
+vali-split: 0.5
+learning-rate: 0.00001
+patch-sampling: overunder
+pretrained: true
+image-label-in-path: true
+dropout: true
+freeze: true
+logdir: logdir_test

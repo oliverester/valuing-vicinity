@@ -1,0 +1,9 @@
+test-data: /homes/oester/repositories/prae/data/treatment_outcome/preprocessed/PDL1
+embedding-data: /homes/oester/repositories/prae/logdir_embedding/embedding-2021-11-23_09_31_36_pdl1_2048_normalized/compressed_wsis
+image-label-in-path: true
+logdir: logdir_tsne
+label-map-file: data/treatment_outcome/preprocessed/HEEL/label_map.json
+instance: patchclass
+patch-label-type: patch&img
+draw-patches-per-class: 50
+exclude-classes: [-1, 1]

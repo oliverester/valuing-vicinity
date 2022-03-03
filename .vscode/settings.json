@@ -1,0 +1,15 @@
+{
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "*test*.py"
+    ],
+    "jupyter.jupyterServerType": "local",
+    "files.watcherExclude": {
+        "**/data/**": true
+    }
+}

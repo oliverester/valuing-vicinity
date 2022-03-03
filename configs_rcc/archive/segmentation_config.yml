@@ -1,0 +1,24 @@
+arch: resnet50
+gpu: 2
+workers: 16
+batch-size: 128
+epochs: 100
+train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/HEEL_seg
+label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
+#exclude-classes: [-1, 1, 2, 3, 8, 16]
+include-classes: [17, 9, 7, 16, 15, 10, 8, 3, 2]
+vali-split: 0.2
+learning-rate: 0.0002
+adjust-lr: true
+#draw-patches-per-class: 500
+patch-sampling: overunder
+hard-example-mining-ratio: 0.75
+hard-example-mining-switch: true
+pretrained: true
+image-label-in-path: false
+dropout: false
+freeze: false
+normalize: true
+logdir: logdir_seg
+evaluate-every: 0
+early-stopping-epochs: 5

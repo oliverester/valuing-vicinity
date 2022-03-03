@@ -1,0 +1,9 @@
+/data
+/logdir*
+/logdir_archive
+/logdir_test
+deephist/__pycache__/*
+src/tests/testdata/
+*.png
+*.pyc
+

@@ -1,0 +1,28 @@
+arch: resnet50
+gpu: 1
+ngpus: 6
+workers: 16
+batch-size: 128
+epochs: 100
+train-data: /homes/oester/repositories/prae/data/preprocessed/CD68
+#test-data: /homes/oester/repositories/prae/data/preprocessed/HEEL_test
+label-map-file: /homes/oester/repositories/prae/data/preprocessed/label_map.json
+patch-label-type: image
+#exclude-classes: [-1, 1] #, 10, 18]
+include-classes: [9] # tumor vital
+#ali-split: 0.3
+nfold: 6
+learning-rate: 0.0001
+#patch-sampling: under
+pretrained: true
+image-label-in-path: true
+dropout: true
+freeze: false
+draw-patches-per-class: 500
+weight-decay: 0.1
+hue-aug-ratio: 0.05
+normalize: true
+hard-example-mining-ratio: 0.75
+hard-example-mining-switch: true
+#hard-example-mining-per-class: false
+#reload-model-folder: /homes/oester/repositories/prae/logdir/_favorites/supervised-2021-11-08_09_36_32_treatment_outcome_class_8_without_norm_PDL1

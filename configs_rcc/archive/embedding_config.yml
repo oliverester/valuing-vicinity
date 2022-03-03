@@ -1,0 +1,10 @@
+#custom-arch: clam_resnet
+arch: resnet50
+gpu: 5
+test-data: data/preprocessed/PDL1
+#model-path: /homes/oester/repositories/deephist/logdir/simsiam/simsiam_model-2021-10-18_12_35_50
+pretrained: True
+#dim: 1024
+normalize: True
+#checkpoint: checkpoint_0099.pth.tar
+log-dir: logdir_embedding

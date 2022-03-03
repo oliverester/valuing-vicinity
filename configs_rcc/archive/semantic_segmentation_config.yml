@@ -1,0 +1,24 @@
+arch: resnet50
+gpu: 2
+workers: 0
+batch-size: 32
+val-batch-size: 256
+epochs: 200
+train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/HEEL_seg_masks_lbl_downsample_16
+label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
+patch-label-type: mask
+draw-patches-per-class: 50
+vali-split: 0.2
+learning-rate: 0.0001
+merge-classes: [[10,7]] # cortex, cortex_atrophy
+adjust-lr: false
+image-label-in-path: false
+normalize: true
+logdir: logdir_sem_seg/d16
+evaluate-every: 10
+warm-up-epochs: 5
+early-stopping-epochs: 10
+criterion: 'cross_entropy'
+n-eval-wsis: 10
+overlay-polygons: true
+seed: 13

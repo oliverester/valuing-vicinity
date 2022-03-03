@@ -1,0 +1,5 @@
+test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/w163_d16
+reload-model-folder: /homes/oester/repositories/prae/logdir_sem_seg/d16_deeplab/attention_segmentation-2022-02-11_14_42_40
+include-val-inference: False
+gpu: 3
+logdir: logdir_w163
