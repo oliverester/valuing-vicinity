@@ -40,49 +40,41 @@ class Memory():
         self._mask = self._mask.cuda(gpu, non_blocking=True)
 
     def update_embeddings(self,
-                          patches: List[PatchFromFile],
-                          embeddings: torch.Tensor):
-    
+                          embeddings: torch.Tensor,
+                          patches_idx = None):
+        
         if not self._memory.is_cuda:
             embeddings = embeddings.detach().cpu()
         
-        wsi_idxs = []
-        x_idxs = []
-        y_idxs = []
-
-        # determine embedding indices of patch batch:
-        for patch in patches:
-            wsi_idx, x, y = self.get_memory_idx(patch)
-            wsi_idxs.append(wsi_idx)
-            # consider k-boarder
-            x_idxs.append(x+self.k)
-            y_idxs.append(y+self.k)
-    
-        # batch update of embeddings     
-        self._memory[wsi_idxs, x_idxs, y_idxs, :] = embeddings
-        self._mask[wsi_idxs, x_idxs, y_idxs] = 1
+          # batch update of embeddings     
+        self._memory[patches_idx[0], # wsi idx
+                     patches_idx[1], # x idx
+                     patches_idx[2], # y idx
+                     :] = embeddings
+        self._mask[patches_idx[0], # wsi idx
+                   patches_idx[1], # x idx
+                   patches_idx[2], # y idx
+                  ] = 1
             
     def get_k_neighbour_embeddings(self,
-                                   patches=List[np.ndarray]):
-        wsi_idxs = []
-        x_idxs = []
-        y_idxs = []
-
-        for patch in patches:
-            ptc_wsi_idxs, ptc_x_idxs, ptc_y_idxs = self.get_neighbour_memory_idxs(patch)
-            wsi_idxs.extend(ptc_wsi_idxs)
-            x_idxs.extend(ptc_x_idxs)
-            y_idxs.extend(ptc_y_idxs)
-
-        # select corresponding embeddings across batch and create a view on the memory with: batch, kernel size (k*2+1)^2, D       
-        neighbour_embeddings = self._memory[wsi_idxs, x_idxs, y_idxs, :].view(len(patches),
-                                                                              self.k*2+1,
-                                                                              self.k*2+1,
-                                                                              self.D)
+                                   neighbours_idx):
+        batch_size = neighbours_idx.shape[-2]
+       
+            # select corresponding embeddings across batch and create a view on the memory with: batch, kernel size (k*2+1)^2, D       
+        neighbour_embeddings = self._memory[neighbours_idx[0], # wsi idx
+                                            neighbours_idx[1], # x idx
+                                            neighbours_idx[2], # y idx
+                                            :].view(batch_size,
+                                                self.k*2+1,
+                                                self.k*2+1,
+                                                self.D)
+                                                
         # after emb insert, there must be values != 0 for emb
-        neighbour_mask = self._mask[wsi_idxs, x_idxs, y_idxs].view(len(patches),
-                                                                   self.k*2+1,
-                                                                   self.k*2+1)
+        neighbour_mask = self._mask[neighbours_idx[0],
+                                    neighbours_idx[1],
+                                    neighbours_idx[2]].view(batch_size,
+                                                            self.k*2+1,
+                                                            self.k*2+1)
         return neighbour_embeddings, neighbour_mask
                 
     def get_embeddings(self, patches: List[PatchFromFile]):
@@ -92,7 +84,7 @@ class Memory():
         y_idxs = []
         
         for patch in patches:
-            wsi_idx, x, y = self.get_memory_idx(patch)
+            wsi_idx, x, y = self.get_memory_idx(patch, k=self.k)
             wsi_idxs.append(wsi_idx)
             x_idxs.append(x)
             y_idxs.append(y)
@@ -100,13 +92,13 @@ class Memory():
         embeddings = self._memory[wsi_idxs, x_idxs, y_idxs, :]
         return embeddings
      
-    def get_neighbour_memory_idxs(self,
+    @staticmethod
+    def get_neighbour_memory_idxs(k: int,
                                   patch: PatchFromFile):
         wsi_idxs = []
         x_idxs = []
         y_idxs = []
-        
-        k = self.k
+    
         x, y = patch.get_coordinates()
         # adjust for memory boarders
         x, y = x + k, y + k 
@@ -119,7 +111,10 @@ class Memory():
         return wsi_idxs, x_idxs, y_idxs
     
     @staticmethod
-    def get_memory_idx(patch: PatchFromFile):
+    def get_memory_idx(k: int,
+                       patch: PatchFromFile):
         x, y = patch.get_coordinates()
+        # adjust for memory boarders
+        x, y = x + k, y + k 
         wsi_idx = patch.wsi.idx
         return wsi_idx, x, y

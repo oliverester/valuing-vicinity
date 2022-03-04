@@ -119,11 +119,12 @@ def train_epoch(holdout_set: HoldoutSet,
                 header_memory = f'memory: GPU {args.gpu} Epoch: [{epoch}]'
 
                 # inference embedding memory for all WSIs first:
-                for patches, images, _,  in metric_logger.log_every(big_data_loader, args.print_freq, epoch, header_memory, 'memory'):
+                for images, _, patches_idx, _ in metric_logger.log_every(big_data_loader, args.print_freq, epoch, header_memory, 'memory'):
                     timer.stop(key='emb_data_loading')
 
                     if args.gpu is not None:
                         images_gpu = images.cuda(args.gpu, non_blocking=True)
+                        patches_idx = patches_idx.cuda(args.gpu, non_blocking=True)
                     
                     timer.stop(key='emb_data_to_gpu')
 
@@ -131,7 +132,7 @@ def train_epoch(holdout_set: HoldoutSet,
                     with torch.no_grad():
                         embeddings = model(images_gpu,
                                            return_embeddings=True)
-                        memory.update_embeddings(patches=patches, 
+                        memory.update_embeddings(patches_idx=patches_idx,
                                                  embeddings=embeddings)
                     
                     model.train()
@@ -150,18 +151,18 @@ def train_epoch(holdout_set: HoldoutSet,
                               epoch=epoch)
         timer.start()
  
-        for patches, images, labels in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+        for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
             timer.stop(key='data_loading')
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
-                #neighbour_masks_gpu = neighbour_masks.cuda(args.gpu, non_blocking=True)
+                neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
             
             timer.stop(key='data_to_gpu')
 
             if epoch >= 0:
-                k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(patches=patches)
+                k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
                 
                 if not k_neighbour_embedding.is_cuda:
                     k_neighbour_embedding = k_neighbour_embedding.cuda(args.gpu, non_blocking=True)

@@ -9,8 +9,9 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
+from src.deephist.attention_segmentation.Memory import Memory
 from src.exp_management.tracking import Timer, timeit
+from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
@@ -74,6 +75,13 @@ class AttentionPatchesDataset(Dataset):
             patch = self.patches[idx]
         else:
             patch = self.wsi_dataset.get_patches()[idx]
+        
+        # get patch idx in memory
+        patch_idx = Memory.get_memory_idx(patch=patch,
+                                          k=self.wsi_dataset.k_neighbours)
+        # get k-neighbourhood patch idxs in memory
+        patch_neighbour_idxs = Memory.get_neighbour_memory_idxs(k=self.wsi_dataset.k_neighbours,
+                                                                patch=patch)
             
         patch_img, label = patch()
       
@@ -81,4 +89,4 @@ class AttentionPatchesDataset(Dataset):
             patch_img = self.transform(patch_img)
         self.timer.stop(key="data_augmentation")
 
-        return patch, patch_img, label
+        return patch_img, label, patch_idx, patch_neighbour_idxs

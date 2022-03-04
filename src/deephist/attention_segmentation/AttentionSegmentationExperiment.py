@@ -780,15 +780,18 @@ def attention_inference(data_loader: torch.utils.data.DataLoader,
     
 class NeighbourBatch:
     def __init__(self, batch) -> None:    
-        self.patch = [item[0] for item in batch]
-        self.img = torch.stack([item[1] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[2]) for item in batch])
-
+        self.img = torch.stack([item[0] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
+        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[2]) for item in batch]))])
+        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[3]) for item in batch]))]) 
+        
     # custom memory pinning method on custom type
     def pin_memory(self):
         self.img = self.img.pin_memory()
         self.mask = self.mask.pin_memory()
-        return self.patch, self.img, self.mask
+        self.patch_idx = self.patch_idx.pin_memory()
+        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
+        return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
     
 class MultiscaleBatch:
     def __init__(self, batch) -> None:    

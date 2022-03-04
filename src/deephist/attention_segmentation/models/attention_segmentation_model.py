@@ -32,9 +32,9 @@ class AttentionSegmentationModel(torch.nn.Module):
         self.attention_input_dim = attention_input_dim
         
         if not self.use_central_attention:
-            self.mask_central = torch.full((k*2+1,k*2+1), fill_value=1)
-            self.mask_central[k,k] = 0
-            self.register_buffer('mask_central_buffer', self.mask_central, persistent=False)
+            mask_central = torch.full((k*2+1,k*2+1), fill_value=1)
+            mask_central[k,k] = 0
+            self.register_buffer('mask_central', mask_central, persistent=False)
 
         # Pytorch Segmentation Models: Baseline
         self.model = create_model(arch=arch,
