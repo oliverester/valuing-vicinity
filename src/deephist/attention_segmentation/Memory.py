@@ -9,24 +9,23 @@ from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
 class Memory():
     
-    def __init__(self, n_x, n_y, n_w, D, k, use_central_attention=False) -> None:
+    def __init__(self, n_x, n_y, n_w, D, k) -> None:
         
         self.n_x = n_x
         self.n_y = n_y
         self.n_w = n_w
         self.D = D
         self.k = k
-        self.use_central_attention = use_central_attention
         self._initialize_emb_memory()
     
     def _initialize_emb_memory(self):
         # plus k-boarder 
         memory = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k, self.D), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=True)
+                                dtype=torch.float32, pin_memory=False)
         mask = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=True)
+                                dtype=torch.float32, pin_memory=False)
     
         print(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024

@@ -82,7 +82,7 @@ class WSIFromFolder():
         n_y = self.n_patches_row
         self.embedding_memory = Memory(n_x=n_x,
                                        n_y=n_y,
-                                       n_wsi=n_wsis,
+                                       n_w=n_wsis,
                                        D=self.embedding_dim,
                                        k=self.k_neighbours)
 

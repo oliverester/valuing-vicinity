@@ -323,7 +323,8 @@ class AttentionSegmentationExperiment(MLExperiment):
                         patches[patch_counter].heatmap = heatmap
                         
                         patch_counter += 1
-                        
+                
+                # all patches inferenced?       
                 assert(patch_counter == len(wsi.get_patches()))
                         
                 wsi.conf_matrix = conf_matrix
@@ -730,33 +731,32 @@ def attention_inference(data_loader: torch.utils.data.DataLoader,
 
         # compute output
     memory = data_loader.dataset.wsi_dataset.embedding_memory
-    k_neighbours = data_loader.dataset.wsi_dataset.k_neighbours
         
     if args.memory_to_gpu is True:
         memory.to_gpu(gpu)
         
     # first loop: create neighbourhood embedding memory
     with torch.no_grad():
-        for patches, images, _, _, _ in data_loader:
+        for images, _, patches_idx, _ in data_loader:
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
     
             embeddings = model(images,
                                return_embeddings=True)
-            memory.update_embeddings(patches=patches, 
+            memory.update_embeddings(patches_idx=patches_idx,
                                      embeddings=embeddings)
             
         # second loop: attend freezed neighbourhood memory     
-        for patches, images, targets in data_loader:
+        for  images, targets, _, neighbours_idx in data_loader:
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
             
-            k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(k=k_neighbours,
-                                                                      patches=patches)
+            k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
             
             if not k_neighbour_embedding.is_cuda:
                 k_neighbour_embedding = k_neighbour_embedding.cuda(gpu, non_blocking=True)
-            
+                k_neighbour_mask = k_neighbour_mask.cuda(args.gpu, non_blocking=True)
+
             logits, attention = model(images, 
                                       neighbour_masks=k_neighbour_mask,
                                       neighbour_embeddings=k_neighbour_embedding,
