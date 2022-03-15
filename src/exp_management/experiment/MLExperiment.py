@@ -67,7 +67,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
         """
         
     @abstractmethod
-    def set_predictions(self,
+    def wsi_inference(self,
                         wsis: List[WSIFromFolder],
                         model: nn.Module,
                         data_provider: DataProvider,

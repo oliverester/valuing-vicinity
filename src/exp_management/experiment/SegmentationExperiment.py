@@ -218,11 +218,19 @@ class SegmentationExperiment(MLExperiment):
             
         return new_performance
     
-    def set_predictions(self,
-                        wsis: List[WSIFromFolder],
-                        model: nn.Module,
-                        data_provider: DataProvider,
-                        gpu: int):
+    def wsi_inference(self,
+                      wsis: List[WSIFromFolder],
+                      model: nn.Module,
+                      data_provider: DataProvider,
+                      gpu: int):
+        """ Run wsi inference on WSI objects.
+
+        Args:
+            wsis (List[WSIFromFolder]): WSIs
+            model (nn.Module): trained model
+            data_provider (DataProvider): data provider to handle WSIs
+            gpu (int): gpu number
+        """
         
         if self.args.attention_on: 
             from src.deephist.segmentation.attention_segmentation.attention_inference import do_inference
@@ -273,41 +281,42 @@ class SegmentationExperiment(MLExperiment):
                     
                     # dice score
                     wsi_dice_nominator += dice_nominator(y_true=mask_batch,
-                                                        y_pred=mask_pred_batch,
-                                                        n_classes=data_provider.number_classes)
+                                                         y_pred=mask_pred_batch,
+                                                         n_classes=data_provider.number_classes)
                     
                     wsi_dice_denominator += dice_denominator(y_true=mask_batch,
-                                                            y_pred=mask_pred_batch,
-                                                            n_classes=data_provider.number_classes)
+                                                             y_pred=mask_pred_batch,
+                                                             n_classes=data_provider.number_classes)
                     
                     # jaccard index
                     wsi_jaccard_nominator += jaccard_nominator(y_true=mask_batch,
-                                                            y_pred=mask_pred_batch,
-                                                            n_classes=data_provider.number_classes)
+                                                               y_pred=mask_pred_batch,
+                                                               n_classes=data_provider.number_classes)
                     
                     wsi_jaccard_denominator += jaccard_denominator(y_true=mask_batch,
-                                                                y_pred=mask_pred_batch,
-                                                                n_classes=data_provider.number_classes)
+                                                                   y_pred=mask_pred_batch,
+                                                                   n_classes=data_provider.number_classes)
                     
                     # confusion matrix:
                     conf_matrix += torch_conf_matrix(y_true=mask_batch,
-                                                    y_pred=mask_pred_batch,
-                                                    n_classes=data_provider.number_classes)
+                                                     y_pred=mask_pred_batch,
+                                                     n_classes=data_provider.number_classes)
                     # precision / recall
                     wsi_positives += positives(y_true=mask_batch,
-                                            n_classes=data_provider.number_classes)
+                                               n_classes=data_provider.number_classes)
                     wsi_pred_positives += pred_positives(y_pred=mask_pred_batch,
-                                                        n_classes=data_provider.number_classes)
+                                                         n_classes=data_provider.number_classes)
                     wsi_true_positives += true_positives(y_true=mask_batch,
-                                                        y_pred=mask_pred_batch,
-                                                        n_classes=data_provider.number_classes)
+                                                         y_pred=mask_pred_batch,
+                                                         n_classes=data_provider.number_classes)
                     
                     true_positive_mask_batch = mask_batch == mask_pred_batch
                     
+                    # generate inference patches aligned to thumbnail size
                     for mask_batch, mask_output, true_positive_mask in zip(mask_batch, mask_pred_batch, true_positive_mask_batch):
                         # seg mask pred
                         img = self.mask_to_img(mask=mask_output.cpu(),
-                                            label_handler=data_provider.label_handler)
+                                               label_handler=data_provider.label_handler)
                         patches[patch_counter].set_prediction(img)
                         
                         # seg true mask
@@ -317,7 +326,7 @@ class SegmentationExperiment(MLExperiment):
                         
                         # heatmap
                         heatmap = self.mask_to_img(mask=true_positive_mask.cpu(),
-                                                binary=True)
+                                                   binary=True)
                         patches[patch_counter].heatmap = heatmap
                         
                         patch_counter += 1

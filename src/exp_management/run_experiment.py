@@ -259,21 +259,12 @@ def evaluate_model(exp: Experiment,
                    log_metrics: bool = False):
     
     print(f"Evaluating {tag} WSIs.")
-    
-    try:
-        exp.evaluate_details(model=model,
-                             wsis=wsis,
-                             writer=writer,
-                             tag=tag,
-                             save_to_folder=True)  
-    except AttributeError:
-        print("Skipping details evaluation")
-      
+          
     # inference for all patches
-    exp.set_predictions(wsis=wsis,
-                        model=model,
-                        data_provider=exp.data_provider,
-                        gpu=exp.args.gpu)
+    exp.wsi_inference(wsis=wsis,
+                      model=model,
+                      data_provider=exp.data_provider,
+                      gpu=exp.args.gpu)
     
     # evaluate on WSI level
     evaluation = exp.evaluate_wsis(wsis=wsis,
