@@ -34,8 +34,8 @@ class Memory():
             
     def to_gpu(self,
                gpu):
-        self._memory = self._memory.cuda(gpu, non_blocking=True)
-        self._mask = self._mask.cuda(gpu, non_blocking=True)
+        self._memory = self._memory.cuda(gpu, non_blocking=False)
+        self._mask = self._mask.cuda(gpu, non_blocking=False)
 
     def update_embeddings(self,
                           embeddings: torch.Tensor,

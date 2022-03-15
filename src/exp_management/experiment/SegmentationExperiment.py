@@ -719,10 +719,10 @@ class NeighbourBatch:
         
     # custom memory pinning method on custom type
     def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        self.patch_idx = self.patch_idx.pin_memory()
-        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
+        # self.img = self.img.pin_memory()
+        # self.mask = self.mask.pin_memory()
+        # self.patch_idx = self.patch_idx.pin_memory()
+        # self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
         return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
     
 class MultiscaleBatch:

@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from tqdm import tqdm
 
 
 def do_inference(data_loader: torch.utils.data.DataLoader,
@@ -77,11 +78,13 @@ def memory_inference(data_loader,
     return outputs, labels, attentions, neighbour_masks
   
 def fill_memory(data_loader, memory, model, gpu): 
+    print("Filling memory..")
+    
     model.eval()
     # no matter what, enforce all patch mode to create complete memory
     with data_loader.dataset.wsi_dataset.all_patch_mode():
         with torch.no_grad():
-            for images, _, patches_idx, _ in data_loader:
+            for images, _, patches_idx, _ in tqdm(data_loader):
                 if gpu is not None:
                     images = images.cuda(gpu, non_blocking=True)
                     
@@ -89,9 +92,9 @@ def fill_memory(data_loader, memory, model, gpu):
                                    return_embeddings=True)
                 memory.update_embeddings(patches_idx=patches_idx,
                                          embeddings=embeddings)
-     
-    assert len(data_loader.dataset.wsi_dataset.get_patches()) == torch.sum(torch.max(memory, dim=-1)[0] != 0).item(), \
-        'memory is not completely build-up.'
+        
+        assert len(data_loader.dataset.wsi_dataset.get_patches()) == torch.sum(torch.max(memory._memory, dim=-1)[0] != 0).item(), \
+            'memory is not completely build-up.'
     model.train()
     return memory
     
