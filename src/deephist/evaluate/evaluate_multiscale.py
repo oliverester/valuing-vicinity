@@ -4,9 +4,10 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-from src.deephist.attention_segmentation.AttentionSegmentationExperiment import AttentionSegmentationExperiment
-from src.deephist.attention_segmentation.models.attention_segmentation_model import get_k_neighbour_embeddings, update_embeddings
-from src.deephist.run_experiment import reload_model
+from src.deephist.segmentation.multiscale_segmentation.multiscale_inference import do_inference
+
+from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
+from src.exp_management.run_experiment import reload_model
 from src.exp_management.tracking import Visualizer
 
 def evaluate_details(patch_coordinates,
@@ -35,9 +36,9 @@ def evaluate_details(patch_coordinates,
                         
                         patches_loader = exp.data_provider.get_wsi_loader(patches=patches)
 
-                        outputs, labels = multiscale_inference(data_loader=patches_loader,
-                                                               model=model,
-                                                               gpu=exp.args.gpu)  
+                        outputs, labels = do_inference(data_loader=patches_loader,
+                                                       model=model,
+                                                       gpu=exp.args.gpu)  
                         # append results to patch object
                         for i, patch in enumerate(patches):
                             patch.prediction = exp.mask_to_img(mask=outputs[i],
@@ -62,44 +63,7 @@ def evaluate_details(patch_coordinates,
                     except Exception as e:
                         print(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
                         raise e
-   
-def multiscale_inference(data_loader: torch.utils.data.DataLoader,
-                         model: torch.nn.Module,
-                         gpu: int = None,
-                         args = None):
-    """Apply model to data to receive model output
 
-    Args:
-        data_loader (torch.utils.data.DataLoader): A pytorch DataLoader
-            that holds the inference data
-        model (torch.nn.Module): A pytorch model
-        args (Dict): args
-
-    Returns:
-        [type]: [description]
-    """
-
-    outputs = []
-    labels = []
-    
-    with torch.no_grad():
-        # switch to evaluate mode
-        model.eval()
-        m = torch.nn.Softmax(dim=1).cuda(gpu)
-
-        # second loop: attend freezed neighbourhood memory     
-        for images, context_images, targets in data_loader:
-            if gpu is not None:
-                images = images.cuda(gpu, non_blocking=True)
-                context_images = context_images.cuda(gpu, non_blocking=True)
-            
-            logits, _ = model(images, context_images)  
-            probs = m(logits)
-    
-            outputs.extend(torch.argmax(probs,dim=1).cpu())
-            labels.extend(targets.cpu())
-
-    return outputs, labels
     
 if __name__ == "__main__":
 
@@ -112,7 +76,7 @@ if __name__ == "__main__":
     #                     }
     patch_coordinates = {'RCC-TA-163.001~B': [(14,24), (16,24), (16,22), (14,22)],
                          }
-    exp_multiscale=AttentionSegmentationExperiment(config_path='/homes/oester/repositories/prae/src/deephist/attention_segmentation/analysis/multiscale_segmentation_config_inference.yml')
+    exp_multiscale = SegmentationExperiment(config_path='/src/deephist/evaluate/configs/multiscale_segmentation_config_inference.yml')
 
     model_multiscale = exp_multiscale.model
     reload_multiscale_from = Path(exp_multiscale.args.logdir) / exp_multiscale.args.reload_model_folder

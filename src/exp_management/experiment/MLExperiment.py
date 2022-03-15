@@ -9,10 +9,10 @@ import torch
 from torchvision import transforms
 from torch import nn
 
-from src.exp_management.Experiment import Experiment
+from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management import tracking
 from src.exp_management.config import Config
-from src.deephist.data_provider import DataProvider
+from src.exp_management.data_provider import DataProvider
 from src.lib.better_abc import ABCMeta
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 

@@ -11,8 +11,9 @@ import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
+from deephist.segmentation.attention_segmentation.attention_inference import fill_memory
 
-from src.deephist.data_provider import HoldoutSet
+from src.exp_management.data_provider import HoldoutSet
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management import tracking
 from src.pytorch_datasets.label_handler import LabelHandler
@@ -105,42 +106,21 @@ def train_epoch(holdout_set: HoldoutSet,
         
         # get memory of dataset
         memory = wsi_dataset.embedding_memory
-        k_neighbours = wsi_dataset.k_neighbours
+        k_neighbours = memory.k
         
         if args.memory_to_gpu is True:
             memory.to_gpu(args.gpu)
              
         # in first epoch, ignore embeddings memory
-        # then, build embedding memory
-        if epoch >= 0: 
+        # then, fill embedding memory
+        if epoch > 0: 
             timer.start()
 
-            with wsi_dataset.all_patch_mode():
-                header_memory = f'memory: GPU {args.gpu} Epoch: [{epoch}]'
-
-                # inference embedding memory for all WSIs first:
-                for images, _, patches_idx, _ in metric_logger.log_every(big_data_loader, args.print_freq, epoch, header_memory, 'memory'):
-                    timer.stop(key='emb_data_loading')
-
-                    if args.gpu is not None:
-                        images_gpu = images.cuda(args.gpu, non_blocking=True)
-                        patches_idx = patches_idx.cuda(args.gpu, non_blocking=True)
+            memory = fill_memory(data_loader=big_data_loader,
+                                 memory=memory,
+                                 model=model,
+                                 gpu=args.gpu)
                     
-                    timer.stop(key='emb_data_to_gpu')
-
-                    model.eval()
-                    with torch.no_grad():
-                        embeddings = model(images_gpu,
-                                           return_embeddings=True)
-                        memory.update_embeddings(patches_idx=patches_idx,
-                                                 embeddings=embeddings)
-                    
-                    model.train()
-                    timer.stop(key='emb_inference')
-                # sanity check: all patches must have embeddings
-                assert len(big_data_loader.dataset.wsi_dataset.get_patches()) == torch.sum(torch.max(memory._memory, dim=-1)[0] != 0).item(), \
-                'all patches must have one embedding in memory'
-            
             if args.log_details:
                 # T-sne viz of embedding memory
                 viz.plot_tsne(tag=f"{phase}_memory_tsne",
@@ -149,19 +129,15 @@ def train_epoch(holdout_set: HoldoutSet,
                               sample_size=1000,
                               label_handler=holdout_set.data_provider.label_handler,
                               epoch=epoch)
-        timer.start()
- 
+                 
         for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
-            timer.stop(key='data_loading')
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
                 neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
             
-            timer.stop(key='data_to_gpu')
-
-            if epoch >= 0:
+            if epoch > 0:
                 k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
                 
                 if not k_neighbour_embedding.is_cuda:
@@ -173,8 +149,7 @@ def train_epoch(holdout_set: HoldoutSet,
             logits, attention = model(images=images_gpu, 
                                       neighbour_masks=k_neighbour_mask,
                                       neighbour_embeddings=k_neighbour_embedding,
-                                      return_attention=True)  
-            timer.stop(key='model')
+                                      return_attention=True) 
 
             if args.combine_criterion_after_epoch is not None:
                 loss = criterion(logits, labels_gpu, epoch)
@@ -186,9 +161,7 @@ def train_epoch(holdout_set: HoldoutSet,
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                
-            timer.stop(key='backprop')
-                            
+                                            
             if args.log_details:
                 
                 logits_cpu = logits.cpu()

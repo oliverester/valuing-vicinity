@@ -1,6 +1,5 @@
 
 from collections import defaultdict
-from copy import copy
 from pathlib import Path
 
 from fastai.losses import DiceLoss, FocalLoss
@@ -11,19 +10,19 @@ from typing import Dict, List, Tuple
 import torch
 from torchvision import transforms
 
-from src.deephist.attention_segmentation.AttentionPatchesDataset import AttentionPatchesDataset
-from src.deephist.attention_segmentation.models.attention_segmentation_model import AttentionSegmentationModel
-from src.deephist.attention_segmentation.train_epoch import train_epoch
-from src.deephist.attention_segmentation.attention_segmentation_parser import AttentionSegmentationConfig
-import src.deephist.semantic_segmentation.train_epoch as train_semantic
-import src.deephist.multiscale_segmentation.train_epoch as train_multiscale
-from src.deephist.multiscale_segmentation.MultiscalePatchesDataset import MultiscalePatchesDataset
-from src.deephist.multiscale_segmentation.multiscale.models.YclassRes18Net import YclassRes18Net
-from src.deephist.multiscale_segmentation.multiscale.models.Ymm2classRes18Net import Ymm2classRes18Net
-from src.deephist.data_provider import DataProvider
-from src.deephist.CustomPatchesDataset import CustomPatchesDataset
+from src.deephist.segmentation.attention_segmentation.AttentionPatchesDataset import AttentionPatchesDataset
+from src.deephist.segmentation.attention_segmentation.models.attention_segmentation_model import AttentionSegmentationModel
+from src.deephist.segmentation.attention_segmentation.train_epoch import train_epoch
+from src.deephist.segmentation.attention_segmentation.attention_segmentation_parser import AttentionSegmentationConfig
+import src.deephist.segmentation.semantic_segmentation.train_epoch as train_semantic
+import src.deephist.segmentation.multiscale_segmentation.train_epoch as train_multiscale
+from src.deephist.segmentation.multiscale_segmentation.MultiscalePatchesDataset import MultiscalePatchesDataset
+from src.deephist.segmentation.multiscale_segmentation.multiscale.models.YclassRes18Net import YclassRes18Net
+from src.deephist.segmentation.multiscale_segmentation.multiscale.models.Ymm2classRes18Net import Ymm2classRes18Net
+from src.deephist.segmentation.semantic_segmentation.CustomPatchesDataset import CustomPatchesDataset
+from src.exp_management.data_provider import DataProvider
 from src.exp_management import tracking
-from src.exp_management.MLExperiment import MLExperiment
+from src.exp_management.experiment.MLExperiment import MLExperiment
 from src.exp_management.evaluation.confusion_matrix import torch_conf_matrix
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management.evaluation.jaccard import jaccard, jaccard_denominator, jaccard_nominator
@@ -35,7 +34,7 @@ from src.settings import get_class_weights
 
 
 
-class AttentionSegmentationExperiment(MLExperiment):
+class SegmentationExperiment(MLExperiment):
     
 
     def __init__(self, config_path, testmode=False):
@@ -226,13 +225,14 @@ class AttentionSegmentationExperiment(MLExperiment):
                         gpu: int):
         
         if self.args.attention_on: 
-            inference_fun = attention_inference
+            from src.deephist.segmentation.attention_segmentation.attention_inference import do_inference
+            inference_fun = do_inference
         elif self.args.multiscale_on:
-            from src.deephist.multiscale_segmentation.multiscale_inference import do_inference
+            from src.deephist.segmentation.multiscale_segmentation.multiscale_inference import do_inference
             inference_fun = do_inference
         else:
             # basic inference
-            from src.deephist.run_experiment import do_inference
+            from src.deephist.segmentation.semantic_segmentation.semantic_inference import do_inference
             inference_fun = do_inference
             
         for wsi in wsis:
@@ -261,7 +261,6 @@ class AttentionSegmentationExperiment(MLExperiment):
                 mask_predictions, masks = inference_fun(wsi_loader,
                                                         model,
                                                         gpu,
-                                                        out='torch',
                                                         args=self.args)
                     
                 assert(len([mask for mask_batch in mask_predictions for mask in mask_batch]) == len(wsi.get_patches()))
@@ -272,41 +271,40 @@ class AttentionSegmentationExperiment(MLExperiment):
                     mask_batch = mask_batch.cuda(gpu, non_blocking=True)
                     mask_pred_batch = mask_pred_batch.cuda(gpu, non_blocking=True)
                     
-                    mask_argmax_batch = torch.argmax(mask_pred_batch, dim=1)
                     # dice score
                     wsi_dice_nominator += dice_nominator(y_true=mask_batch,
-                                                        y_pred=mask_argmax_batch,
+                                                        y_pred=mask_pred_batch,
                                                         n_classes=data_provider.number_classes)
                     
                     wsi_dice_denominator += dice_denominator(y_true=mask_batch,
-                                                            y_pred=mask_argmax_batch,
+                                                            y_pred=mask_pred_batch,
                                                             n_classes=data_provider.number_classes)
                     
                     # jaccard index
                     wsi_jaccard_nominator += jaccard_nominator(y_true=mask_batch,
-                                                            y_pred=mask_argmax_batch,
+                                                            y_pred=mask_pred_batch,
                                                             n_classes=data_provider.number_classes)
                     
                     wsi_jaccard_denominator += jaccard_denominator(y_true=mask_batch,
-                                                                y_pred=mask_argmax_batch,
+                                                                y_pred=mask_pred_batch,
                                                                 n_classes=data_provider.number_classes)
                     
                     # confusion matrix:
                     conf_matrix += torch_conf_matrix(y_true=mask_batch,
-                                                    y_pred=mask_argmax_batch,
+                                                    y_pred=mask_pred_batch,
                                                     n_classes=data_provider.number_classes)
                     # precision / recall
                     wsi_positives += positives(y_true=mask_batch,
                                             n_classes=data_provider.number_classes)
-                    wsi_pred_positives += pred_positives(y_pred=mask_argmax_batch,
+                    wsi_pred_positives += pred_positives(y_pred=mask_pred_batch,
                                                         n_classes=data_provider.number_classes)
                     wsi_true_positives += true_positives(y_true=mask_batch,
-                                                        y_pred=mask_argmax_batch,
+                                                        y_pred=mask_pred_batch,
                                                         n_classes=data_provider.number_classes)
                     
-                    true_positive_mask_batch = mask_batch == mask_argmax_batch
+                    true_positive_mask_batch = mask_batch == mask_pred_batch
                     
-                    for mask_batch, mask_output, true_positive_mask in zip(mask_batch, mask_argmax_batch, true_positive_mask_batch):
+                    for mask_batch, mask_output, true_positive_mask in zip(mask_batch, mask_pred_batch, true_positive_mask_batch):
                         # seg mask pred
                         img = self.mask_to_img(mask=mask_output.cpu(),
                                             label_handler=data_provider.label_handler)
@@ -558,7 +556,7 @@ class AttentionSegmentationExperiment(MLExperiment):
         log_wsi_preds['wsi_std_dice_scores'] = wsi_std_dice_score
         # class-mean of wsi-wise-mean Dice Score
         log_wsi_preds['class_mean_dice_scores'] = class_mean_dice_score
-        log_wsi_preds['class_std_dice_scores'] = class_mean_dice_score
+        log_wsi_preds['class_std_dice_scores'] = class_std_dice_score
         
         # Jaccard 
         
@@ -702,82 +700,7 @@ class AttentionSegmentationExperiment(MLExperiment):
     def collate_multiscale_patches(self, batch):
         return MultiscaleBatch(batch)
         
-     
-def attention_inference(data_loader: torch.utils.data.DataLoader,
-                        model: torch.nn.Module,
-                        gpu: int = None,
-                        out: str = 'list',
-                        return_attention: bool = False,
-                        args = None):
-    """Apply model to data to receive model output
-
-    Args:
-        data_loader (torch.utils.data.DataLoader): A pytorch DataLoader
-            that holds the inference data
-        model (torch.nn.Module): A pytorch model
-        args (Dict): args
-
-    Returns:
-        [type]: [description]
-    """
-
-    outputs = []
-    labels = []
-    attentions = []
-    
-    # switch to evaluate mode
-    model.eval()
-    m = nn.Softmax(dim=1).cuda(gpu)
-
-        # compute output
-    memory = data_loader.dataset.wsi_dataset.embedding_memory
-        
-    if args.memory_to_gpu is True:
-        memory.to_gpu(gpu)
-        
-    # first loop: create neighbourhood embedding memory
-    with torch.no_grad():
-        for images, _, patches_idx, _ in data_loader:
-            if gpu is not None:
-                images = images.cuda(gpu, non_blocking=True)
-    
-            embeddings = model(images,
-                               return_embeddings=True)
-            memory.update_embeddings(patches_idx=patches_idx,
-                                     embeddings=embeddings)
-            
-        # second loop: attend freezed neighbourhood memory     
-        for  images, targets, _, neighbours_idx in data_loader:
-            if gpu is not None:
-                images = images.cuda(gpu, non_blocking=True)
-            
-            k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
-            
-            if not k_neighbour_embedding.is_cuda:
-                k_neighbour_embedding = k_neighbour_embedding.cuda(gpu, non_blocking=True)
-                k_neighbour_mask = k_neighbour_mask.cuda(args.gpu, non_blocking=True)
-
-            logits, attention = model(images, 
-                                      neighbour_masks=k_neighbour_mask,
-                                      neighbour_embeddings=k_neighbour_embedding,
-                                      return_attention=True)  
-            
-            probs = m(logits)
-            if out == 'list':
-                outputs.extend(probs.cpu().numpy())
-                labels.extend(targets.cpu().numpy())
-                attentions.extend(attention.cpu().numpy())
-            elif out == 'torch':
-                #targets = targets.cuda(gpu, non_blocking=True)
-                outputs.append(probs.cpu())
-                labels.append(targets.cpu())
-                attentions.append(attention.cpu())
-                
-    if return_attention:
-        return outputs, labels, attention
-    else:
-        return outputs, labels
-    
+  
 class NeighbourBatch:
     def __init__(self, batch) -> None:    
         self.img = torch.stack([item[0] for item in batch])

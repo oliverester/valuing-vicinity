@@ -1,7 +1,7 @@
 """
 Run supervised ML-experiment
 """
-from typing import Dict, List
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -9,11 +9,10 @@ from torch.nn.modules.loss import _Loss
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
-from torch.utils.data.dataloader import DataLoader
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
-from src.deephist.data_provider import HoldoutSet
+from src.exp_management.data_provider import HoldoutSet
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management import tracking
 from src.pytorch_datasets.label_handler import LabelHandler
@@ -88,16 +87,13 @@ def train_epoch(holdout_set: HoldoutSet,
         sample_labels = None
         sample_preds = None
         
-        for images, context_images,  labels in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+        for images, labels in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
 
             if args.gpu is not None:
-                images_gpu = images.cuda(args.gpu, non_blocking=True)              
-                context_images_gpu = context_images.cuda(args.gpu, non_blocking=True)
+                images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
-               
             # compute output and loss
-            # image and context image as input to multiscale model Y
-            logits, _ = model(images_gpu, context_images_gpu)
+            logits = model(images_gpu)
             loss = criterion(logits, labels_gpu)
             # compute gradiemt and do SGD step
             if phase == 'train':

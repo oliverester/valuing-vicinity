@@ -1,7 +1,6 @@
 import itertools
 from typing import List
 
-import numpy as np
 import torch
 
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile

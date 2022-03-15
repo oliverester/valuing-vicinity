@@ -9,7 +9,6 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.exp_management.tracking import Timer, timeit
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
@@ -43,9 +42,7 @@ class MultiscalePatchesDataset(Dataset):
         self.wsi_dataset = wsi_dataset
         self.patches = patches
         self.transform = transform
-        
-        self.timer = Timer(verbose=False)
-        
+                
     def get_label_handler(self) -> LabelHandler:
         """Get the label handler of the WSIs to access map to original labels.
 
@@ -64,7 +61,6 @@ class MultiscalePatchesDataset(Dataset):
     
     def __getitem__(self, idx):
         
-        self.timer.start()
         if torch.is_tensor(idx):
             idx = idx.tolist()
 

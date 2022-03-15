@@ -4,8 +4,8 @@ import torch
 def do_inference(data_loader: torch.utils.data.DataLoader,
                  model: torch.nn.Module,
                  gpu: int = None,
-                 out: str = 'list',
                  args = None):
+
     """Apply model to data to receive model output
 
     Args:
@@ -33,12 +33,8 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
             # compute output
             logits, _ = model(images, context_images)
             probs = m(logits)
-            if out == 'list':
-                outputs.extend(probs.cpu().numpy())
-                labels.extend(targets.cpu().numpy())
-            elif out == 'torch':
-                #targets = targets.cuda(gpu, non_blocking=True)
-                outputs.append(probs.cpu())
-                labels.append(targets.cpu())
+           
+            outputs.append(torch.argmax(probs,dim=1).cpu())
+            labels.append(targets.cpu())
 
     return outputs, labels

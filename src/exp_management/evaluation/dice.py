@@ -1,5 +1,3 @@
-import gc
-
 from typing import Dict, List, Tuple
 import torch 
 from torch.nn.functional import one_hot

@@ -1,12 +1,9 @@
-from typing import List
-
-import numpy as np
 import torch
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 from torch import nn
 
-from src.deephist.attention_segmentation.models.multihead_attention_model import \
+from src.deephist.segmentation.attention_segmentation.models.multihead_attention_model import \
     MultiheadAttention
 
 class AttentionSegmentationModel(torch.nn.Module):

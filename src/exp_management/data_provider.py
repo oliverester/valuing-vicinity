@@ -6,8 +6,8 @@ from typing import List, Tuple, Union
 import torch
 import yaml
 
-from src.exp_management.Experiment import Experiment
-from src.deephist.CustomPatchesDataset import CustomPatchesDataset
+from src.exp_management.experiment.Experiment import Experiment
+from deephist.segmentation.semantic_segmentation.CustomPatchesDataset import CustomPatchesDataset
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder

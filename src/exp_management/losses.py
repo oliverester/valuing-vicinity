@@ -1,4 +1,3 @@
-from fastai.losses import DiceLoss, FocalLoss
 import torch
 from torch import nn
 from torch.nn.functional import softmax

@@ -1,12 +1,8 @@
 import unittest
 
-from numpy import False_
 
-from src.deephist.evaluate.tsne.TsneExperiment import TsneExperiment
-from src.deephist.evaluate.tsne.run_tsne import run_tsne
-from src.deephist.data_provider import DataProvider, split_wsi_dataset_root
-from src.deephist.supervised.SupervisedExperiment import SupervisedExperiment
-from src.deephist.run_experiment import run_experiment
+from src.exp_management.data_provider import DataProvider, split_wsi_dataset_root
+from src.exp_management.run_experiment import run_experiment
 
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 
@@ -134,37 +130,5 @@ class GeneralTestCase(unittest.TestCase):
         
         assert(len(data_provider.holdout_set.train_wsi_dataset.get_wsis()[0].get_patches()) == 10)
                 
-
-    def test_image_supervised_training(self):
-
-        run_experiment(exp=SupervisedExperiment(config_path='tests/testconfigs/supervised_config_images_classification.yml',
-                       testmode=True))
-    
-    def test_patch_supervised_training(self):
-
-        run_experiment(exp=SupervisedExperiment(config_path='tests/testconfigs/supervised_config_patches_classification.yml',
-                       testmode=True))
-
-    def test_draw_patch_supervised_training(self):
-
-        run_experiment(exp=SupervisedExperiment(config_path='tests/testconfigs/supervised_config_images_classification_draw.yml',
-                       testmode=True))
- 
-    def test_image_cv__supervised_training(self):
-
-        run_experiment(exp=SupervisedExperiment(config_path='tests/testconfigs/supervised_config_images_classification_cv_parallel.yml',
-                       testmode=True))
-    
-    def test_clam_training(self):
-        from src.deephist.embedding.clam.ClamExperiment import ClamExperiment
-        
-        run_experiment(exp=ClamExperiment(config_path='tests/testconfigs/clam_config_test.yml', testmode=True))
-        
-    def test_tsne(self):
-        
-        run_tsne(exp=TsneExperiment(config_path='tests/testconfigs/tsne_config_patchclass.yml', testmode=True))
-        run_tsne(exp=TsneExperiment(config_path='tests/testconfigs/tsne_config_wsi.yml', testmode=True))
-        run_tsne(exp=TsneExperiment(config_path='tests/testconfigs/tsne_config_wsidataset.yml', testmode=True))
-
 if __name__ == "__main__":
     unittest.main()

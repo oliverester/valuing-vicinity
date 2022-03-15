@@ -19,11 +19,9 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
+from src.exp_management.experiment.Experiment import Experiment
+from src.exp_management.data_provider import CvSet, DataProvider, HoldoutSet
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
-from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
-from src.exp_management.Experiment import Experiment
-from src.deephist.data_provider import CvSet, DataProvider, HoldoutSet
-from src.lib.NestablePool.nestable_pool import NestablePool
 
 
 def run_experiment(exp: Experiment):
@@ -339,46 +337,6 @@ def adjust_learning_rate(optimizer,
         else:
             param_group['lr'] = cur_lr
 
-
-def do_inference(data_loader: torch.utils.data.DataLoader,
-                 model: torch.nn.Module,
-                 gpu: int = None,
-                 out: str = 'list',
-                 args = None):
-    """Apply model to data to receive model output
-
-    Args:
-        data_loader (torch.utils.data.DataLoader): A pytorch DataLoader
-            that holds the inference data
-        model (torch.nn.Module): A pytorch model
-        args (Dict): args
-
-    Returns:
-        [type]: [description]
-    """
-
-    outputs = []
-    labels = []
-    # switch to evaluate mode
-    model.eval()
-    m = nn.Softmax(dim=1).cuda(gpu)
-
-    with torch.no_grad():
-        for images, targets in data_loader:
-            if gpu is not None:
-                images = images.cuda(gpu, non_blocking=True)
-            # compute output
-            logits = model(images)
-            probs = m(logits)
-            if out == 'list':
-                outputs.extend(probs.cpu().numpy())
-                labels.extend(targets.cpu().numpy())
-            elif out == 'torch':
-                #targets = targets # .cuda(gpu, non_blocking=True)
-                outputs.append(probs.cpu())
-                labels.append(targets.cpu())
-
-    return outputs, labels
 
 def count_parameters(model):
     table = PrettyTable(["Modules", "Parameters"])

@@ -13,10 +13,9 @@ from pathlib import Path
 from PIL import Image
 from shapely.affinity import scale
 from shapely.geometry import Polygon, shape, GeometryCollection
-import torch
 import yaml
 
-from src.deephist.attention_segmentation.Memory import Memory
+from src.deephist.segmentation.attention_segmentation.Memory import Memory
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
 class WSIFromFolder():
@@ -74,6 +73,9 @@ class WSIFromFolder():
         self._prediction = None
     
         self._all_patch_mode = False
+        
+        self._restricted_patches = None
+
         
     def initialize_memory(self):
         # inference embedding memory: one wsi
@@ -366,33 +368,26 @@ class WSIFromFolder():
         return drawn_patches
     
     def get_patches(self) -> List[PatchFromFile]:
-        if self._all_patch_mode:
-            return self._patches
+        if self._restricted_patches is not None:
+            return self._restricted_patches 
         else:
-            return self._drawn_patches
+            if self._all_patch_mode:
+                return self._patches
+            else:
+                return self._drawn_patches
         
     def get_patch_from_position(self, x, y) -> PatchFromFile:
-        
         return self._patch_map[x+self._pad_size,y+self._pad_size]
     
     def get_patch_predictions(self) -> List[Tuple[float]]:
-        if self._all_patch_mode:
-            return [ptc.get_prediction() for ptc in self._patches]
-        else:
-            return [ptc.get_prediction() for ptc in self._drawn_patches]
+        return [ptc.get_prediction() for ptc in self.get_patches()]   
         
     def get_embeddings(self) -> List[np.ndarray]:
-        if self._all_patch_mode:
-            return [ptc.embedding for ptc in self._patches]
-        else:
-            return [ptc.embedding for ptc in self._drawn_patches]
+        return [ptc.embedding for ptc in self.get_patches()]
         
     def get_patch_labels(self, org=False) -> List[int]:
-        if self._all_patch_mode:
-            return [ptc.get_label(org=org) for ptc in self._patches]        
-        else:
-            return [ptc.get_label(org=org) for ptc in self._drawn_patches]
-
+        return [ptc.get_label(org=org) for ptc in self.get_patches()]   
+          
     def get_label(self, org=True) -> str:
         """Returns original (medical) image label
 
@@ -444,6 +439,12 @@ class WSIFromFolder():
         yield(self)
         self.idx = tmp_idx
         self._all_patch_mode = False
+        
+    @contextmanager
+    def restrict_patches(self, patches):
+        self._restricted_patches = patches
+        yield(self)
+        self._restricted_patches = None
 
     
 def get_regions_json(path: Union[str, Path],

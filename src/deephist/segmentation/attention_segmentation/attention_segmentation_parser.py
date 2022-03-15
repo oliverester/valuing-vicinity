@@ -4,8 +4,6 @@ Supervised Config parser
 
 import configargparse
 
-from torchvision import models
-
 from src.exp_management.config import Config
 
 class AttentionSegmentationConfig(Config):

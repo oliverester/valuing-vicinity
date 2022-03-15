@@ -2,7 +2,6 @@ from typing import List, Union,Tuple
 
 from matplotlib import pyplot as plt, cm
 import numpy as np
-from PIL import Image
 from sklearn.manifold import TSNE
 
 

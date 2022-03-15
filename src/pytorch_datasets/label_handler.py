@@ -4,7 +4,6 @@ label and pytorch label
 """
 from typing import Dict, List, Union
 import numpy as np
-import pandas as pd
 from torch.functional import Tensor
 
 class LabelHandler():

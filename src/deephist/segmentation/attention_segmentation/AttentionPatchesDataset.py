@@ -9,8 +9,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.deephist.attention_segmentation.Memory import Memory
-from src.exp_management.tracking import Timer, timeit
+from src.deephist.segmentation.attention_segmentation.Memory import Memory
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
@@ -45,9 +44,7 @@ class AttentionPatchesDataset(Dataset):
         self.wsi_dataset = wsi_dataset
         self.patches = patches
         self.transform = transform
-        
-        self.timer = Timer(verbose=False)
-        
+                
     def get_label_handler(self) -> LabelHandler:
         """Get the label handler of the WSIs to access map to original labels.
 
@@ -66,7 +63,6 @@ class AttentionPatchesDataset(Dataset):
     
     def __getitem__(self, idx):
         
-        self.timer.start()
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -87,6 +83,5 @@ class AttentionPatchesDataset(Dataset):
       
         if self.transform is not None:
             patch_img = self.transform(patch_img)
-        self.timer.stop(key="data_augmentation")
 
         return patch_img, label, patch_idx, patch_neighbour_idxs

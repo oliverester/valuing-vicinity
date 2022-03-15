@@ -7,7 +7,6 @@ from typing import Tuple, Union
 
 import numpy as np
 from PIL import Image
-from torch import embedding
 import yaml
 
 

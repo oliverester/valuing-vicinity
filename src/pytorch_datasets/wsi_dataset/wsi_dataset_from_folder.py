@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from src.deephist.attention_segmentation.Memory import Memory
+from src.deephist.segmentation.attention_segmentation.Memory import Memory
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
