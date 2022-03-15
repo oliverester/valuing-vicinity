@@ -1,8 +1,8 @@
 
 import torch
 
-from exp_management import tracking
-from exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
+from src.exp_management import tracking
+from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 
 def initialize_logging(metric_logger, phase, num_heads):
     

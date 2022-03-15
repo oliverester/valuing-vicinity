@@ -11,11 +11,10 @@ import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
-from deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
 
+from src.deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
 from src.deephist.segmentation.attention_segmentation.attention_inference import fill_memory
 from src.exp_management.data_provider import HoldoutSet
-from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management import tracking
 from src.pytorch_datasets.label_handler import LabelHandler
 
@@ -140,10 +139,10 @@ def train_epoch(holdout_set: HoldoutSet,
             step_dice_nominator, step_dice_denominator = log_step(phase=phase,   
                                                                 metric_logger=metric_logger,
                                                                 loss=loss,
-                                                                logits=logits,
-                                                                labels=labels_gpu,
+                                                                logits_gpu=logits,
+                                                                labels_gpu=labels_gpu,
                                                                 images=images,
-                                                                attention=attention, 
+                                                                attention_gpu=attention, 
                                                                 neighbour_masks=k_neighbour_mask,
                                                                 args=args)
             
