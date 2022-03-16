@@ -1,6 +1,10 @@
-import torch.multiprocessing.pool
+from multiprocessing import pool, set_start_method, Process, get_context
+try:
+     set_start_method('spawn', force=True)
+except RuntimeError:
+    pass
 
-class NoDaemonProcess(torch.multiprocessing.Process):
+class NoDaemonProcess(Process):
     @property
     def daemon(self):
         return False
@@ -10,12 +14,12 @@ class NoDaemonProcess(torch.multiprocessing.Process):
         pass
 
 
-class NoDaemonContext(type(torch.multiprocessing.get_context())):
+class NoDaemonContext(type(get_context())):
     Process = NoDaemonProcess
 
 # We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
-class NestablePool(torch.multiprocessing.pool.Pool):
+class NestablePool(pool.Pool):
     def __init__(self, *args, **kwargs):
         kwargs['context'] = NoDaemonContext()
         super(NestablePool, self).__init__(*args, **kwargs)

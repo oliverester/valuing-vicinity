@@ -53,8 +53,8 @@ class DataProvider():
                  ):
 
         # avoid holdout and cv at the same time
-        assert(not (nfold is not None and (vali_split is not None and mc_runs is None)))
-        assert(not (nfold is not None and mc_runs is not None))
+        assert(not (nfold is not None and (vali_split is not None and mc_runs is None))), 'either validation split or cross validation'
+        assert(not (nfold is not None and mc_runs is not None)), 'either cross validation or monte carlo'
         assert(patch_label_type in ['patch', 'image', 'mask', 'distribution'])
         if exclude_classes is not None:
             assert(all([isinstance(ex, str) for ex in exclude_classes]))
@@ -292,7 +292,8 @@ class DataProvider():
                                                        pin_memory=True,
                                                        sampler=train_sampler,
                                                        drop_last=True,
-                                                       collate_fn=self.collate_fn)
+                                                       collate_fn=self.collate_fn,
+                                                       persistent_workers=False if self.workers > 0 else False)
 
             return train_loader, train_sampler, train_dataset.get_label_handler()
 
@@ -310,7 +311,8 @@ class DataProvider():
                                                       shuffle=False,
                                                       num_workers=self.workers,
                                                       pin_memory=True,
-                                                      collate_fn=self.collate_fn)
+                                                      collate_fn=self.collate_fn,
+                                                      persistent_workers=False)
 
             return test_loader, test_dataset.get_label_handler()
 
@@ -332,7 +334,8 @@ class DataProvider():
                                                  shuffle=False, # IMPORTANT, do not change for CLAM
                                                  num_workers=self.workers,
                                                  pin_memory=True,
-                                                 collate_fn=self.collate_fn)
+                                                 collate_fn=self.collate_fn,
+                                                 persistent_workers=False if self.workers > 0 else False)
 
         return wsi_loader
 
@@ -384,7 +387,7 @@ class HoldoutSet():
             pin_memory=True,
             drop_last=True,
             collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True if self.data_provider.workers > 0 else False)
+            persistent_workers=False if self.data_provider.workers > 0 else False)
         
         self.big_train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
@@ -393,7 +396,7 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True if self.data_provider.workers > 0 else False)
+            persistent_workers=False if self.data_provider.workers > 0 else False)
 
         self.vali_loader = torch.utils.data.DataLoader(
             self.vali_torch_dataset,
@@ -401,7 +404,8 @@ class HoldoutSet():
             shuffle=True,
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            collate_fn=self.data_provider.collate_fn)
+            collate_fn=self.data_provider.collate_fn,
+            persistent_workers=False if self.data_provider.workers > 0 else False)
 
 class McSet():
     """

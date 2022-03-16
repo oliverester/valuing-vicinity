@@ -59,8 +59,8 @@ class AttentionSegmentationConfig(Config):
                             help='select to apply inference on val data.')
         parser.add_argument('--gpu', default=0, type=int,
                             help='GPU to use.')
-        parser.add_argument('--ngpus', default=1, type=int,
-                            help='No GPU to use for cross-validation.')
+        parser.add_argument('--gpus', default=[0,1], nargs="*", type=int,
+                            help='GPUs to use for cross-validation.')
         parser.add_argument('--patch-sampling', default=None,
                             choices=['over', 'under', 'overunder'],
                             help='Choose wether train data should be over- or undersampled.'

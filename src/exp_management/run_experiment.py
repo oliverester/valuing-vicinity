@@ -2,11 +2,15 @@
 Run supervised ML-experiment
 """
 
+from copy import deepcopy
 import math
 import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 import os
 from pathlib import Path
+from queue import Queue
 import random
+import traceback
 from typing import List
 
 from prettytable import PrettyTable
@@ -21,6 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import CvSet, DataProvider, HoldoutSet
+from src.lib.NestablePool.nestable_pool import NestablePool
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
 
@@ -97,29 +102,40 @@ def train_kfold_model(cv_set: CvSet,
     m = mp.Manager()
     gpu_queue = m.Queue()
     # initialize queue
-    for gpu_id in range(exp.args.ngpus):
+    for gpu_id in exp.args.gpus:
         gpu_queue.put(gpu_id)
     
-    def _exception_callback(e):
-        pool.terminate()
-        raise e
+    torch.multiprocessing.spawn(train_holdout_model_in_parallel, 
+                                args=(cv_set.holdout_sets, gpu_queue, exp), 
+                                nprocs=len(exp.args.gpus), 
+                                join=True, 
+                                daemon=False,
+                                start_method='spawn')
     
-    # spawn processes per available gpus: use nestable Pool to avoid daemonic subprocesses
-    pool = mp.get_context('spawn').Pool(processes=exp.args.ngpus) 
-    for holdout_set in cv_set.holdout_sets:
-        pool.apply_async(train_holdout_model_in_parallel,
-                         (holdout_set,
-                          gpu_queue,
-                          exp),
-                         error_callback=_exception_callback)
-    pool.close()
-    pool.join()
+    # def _exception_callback(e):
+    #     pool.terminate()
+    #     print(traceback.format_exc())
+    #     raise e
+    
+    # # spawn processes per available gpus: use nestable Pool to avoid daemonic subprocesses
+    # #pool = mp.get_context('spawn').Pool(processes=len(exp.args.gpus)) 
+    # pool = NestablePool(processes=len(exp.args.gpus)) 
+    # for holdout_set in cv_set.holdout_sets:
+    #     pool.apply_async(train_holdout_model_in_parallel,
+    #                      (holdout_set,
+    #                       gpu_queue,
+    #                       exp),
+    #                      error_callback=_exception_callback)
+    # pool.close()
+    # pool.join()
     
 
-def train_holdout_model_in_parallel(holdout_set: HoldoutSet,
+def train_holdout_model_in_parallel(proc_idx,
+                                    holdout_sets: List[HoldoutSet],
                                     gpu_queue: mp.Queue,
                                     exp: Experiment):
     
+    holdout_set = holdout_sets[proc_idx]
     # tread safe gpu id:
     exp.args.gpu = gpu_queue.get()
     
