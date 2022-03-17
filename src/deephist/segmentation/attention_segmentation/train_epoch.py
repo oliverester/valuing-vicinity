@@ -13,7 +13,6 @@ import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
 from src.deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
-from src.deephist.segmentation.attention_segmentation.attention_inference import fill_memory
 from src.exp_management.data_provider import HoldoutSet
 from src.exp_management import tracking
 from src.pytorch_datasets.label_handler import LabelHandler
@@ -90,10 +89,9 @@ def train_epoch(holdout_set: HoldoutSet,
         # in first epoch, ignore embeddings memory
         # then, fill embedding memory
         if epoch > 0: 
-            memory = fill_memory(data_loader=big_data_loader,
-                                 memory=memory,
-                                 model=model,
-                                 gpu=args.gpu)
+            memory.fill_memory(data_loader=big_data_loader,
+                               model=model,
+                               gpu=args.gpu)
                     
             if args.log_details:
                 # T-sne viz of embedding memory
@@ -153,7 +151,7 @@ def train_epoch(holdout_set: HoldoutSet,
             if sample_images is None:
                 sample_images = images
                 sample_labels = labels
-                sample_preds = logits.detach().argmax(axis=1)
+                sample_preds = logits.detach().argmax(axis=1).cpu()
                 
         #after epoch is finished:        
         log_epoch(phase=phase,

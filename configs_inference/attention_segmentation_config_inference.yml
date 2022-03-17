@@ -1,0 +1,4 @@
+test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d16_train
+reload-model-folder: /homes/oester/repositories/valuingvicinity/logdir_test/a_camelyon_d16_unet_resnet18_k4/attention_segmentation-2022-03-17_14_58_16
+include-val-inference: False
+gpu: 3

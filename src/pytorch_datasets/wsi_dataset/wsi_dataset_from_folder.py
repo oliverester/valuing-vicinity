@@ -178,12 +178,14 @@ class WSIDatasetFolder:
     def initialize_memory(self):
         if self.attention_on:
             n_wsis = self.metadata['n_wsis']
+            n_patches = self.metadata['n_patches']
             n_x = self.metadata['n_x_max']
             n_y = self.metadata['n_y_max']
             
             self.embedding_memory = Memory(n_x=n_x,
                                            n_y=n_y,
                                            n_w=n_wsis,
+                                           n_p=n_patches,
                                            D=self.embedding_dim,
                                            k=self.k_neighbours)
 

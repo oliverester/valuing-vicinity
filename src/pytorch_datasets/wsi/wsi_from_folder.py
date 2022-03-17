@@ -66,9 +66,6 @@ class WSIFromFolder():
         self.embedding_dim = self.wsi_dataset.embedding_dim
         self.k_neighbours = self.wsi_dataset.k_neighbours
         
-        #if self.k_neighbours is not None:
-        #    self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
-
         self.thumbnail = self._load_thumbnail()
         self._prediction = None
     
@@ -82,9 +79,11 @@ class WSIFromFolder():
         n_wsis = 1
         n_x = self.n_patches_col 
         n_y = self.n_patches_row
+        n_patches = len(self._patches)
         self.embedding_memory = Memory(n_x=n_x,
                                        n_y=n_y,
                                        n_w=n_wsis,
+                                       n_p=n_patches,
                                        D=self.embedding_dim,
                                        k=self.k_neighbours)
 
@@ -377,6 +376,7 @@ class WSIFromFolder():
                 return self._drawn_patches
         
     def get_patch_from_position(self, x, y) -> PatchFromFile:
+        # shifted because of border 
         return self._patch_map[x+self._pad_size,y+self._pad_size]
     
     def get_patch_predictions(self) -> List[Tuple[float]]:
@@ -425,20 +425,24 @@ class WSIFromFolder():
         
     @contextmanager
     def all_patch_mode(self):
+        tmp_patch_mode = self._all_patch_mode
         self._all_patch_mode = True
         yield(self)
-        self._all_patch_mode = False
+        self._all_patch_mode = tmp_patch_mode
         
     @contextmanager
     def inference_mode(self):
         tmp_idx = self.idx
         self.idx = 0 # needed for memory wsi idx
+        tmp_patch_mode = self._all_patch_mode
         self._all_patch_mode = True
         #import: set each wsi index to 0 - dataloader holds one WSI only in each interation
         self.initialize_memory()
+        if self.k_neighbours is not None:
+            self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
         yield(self)
         self.idx = tmp_idx
-        self._all_patch_mode = False
+        self._all_patch_mode = tmp_patch_mode
         
     @contextmanager
     def restrict_patches(self, patches):

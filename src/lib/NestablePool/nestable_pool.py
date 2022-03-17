@@ -1,8 +1,5 @@
-from multiprocessing import pool, set_start_method, Process, get_context
-try:
-     set_start_method('spawn', force=True)
-except RuntimeError:
-    pass
+from multiprocessing import pool, Process, get_context
+
 
 class NoDaemonProcess(Process):
     @property

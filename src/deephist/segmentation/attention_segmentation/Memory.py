@@ -2,17 +2,19 @@ import itertools
 from typing import List
 
 import torch
+from tqdm import tqdm
 
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
 
 class Memory():
     
-    def __init__(self, n_x, n_y, n_w, D, k) -> None:
+    def __init__(self, n_x, n_y, n_w, n_p, D, k) -> None:
         
         self.n_x = n_x
         self.n_y = n_y
         self.n_w = n_w
+        self.n_p = n_p # only for sanity check to ensure every patch is in memory
         self.D = D
         self.k = k
         self._initialize_emb_memory()
@@ -21,16 +23,20 @@ class Memory():
         # plus k-boarder 
         memory = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k, self.D), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=False)
+                                dtype=torch.float32, pin_memory=True)
         mask = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=False)
+                                dtype=torch.float32, pin_memory=True)
     
         print(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024
         print(f"Embedding memory size: {str(round(size_in_gb, 2))} GB")
         self._memory = memory
         self._mask = mask
+        
+    def _reset(self):
+        self._memory[...] = 0
+        self._mask[...] = 0
             
     def to_gpu(self,
                gpu):
@@ -82,14 +88,45 @@ class Memory():
         y_idxs = []
         
         for patch in patches:
-            wsi_idx, x, y = self.get_memory_idx(patch, k=self.k)
+            wsi_idx, x, y = self.get_memory_idx(patch=patch, 
+                                                k=self.k)
             wsi_idxs.append(wsi_idx)
             x_idxs.append(x)
             y_idxs.append(y)
 
         embeddings = self._memory[wsi_idxs, x_idxs, y_idxs, :]
         return embeddings
-     
+    
+    def fill_memory(self, data_loader, model, gpu): 
+        
+        #reset memory first to ensure consistency
+        self._reset()
+        
+        print("Filling memory..")
+        is_model_training = model.training
+        model.eval()
+        
+        # no matter what, enforce all patch mode to create complete memory
+        with data_loader.dataset.all_patch_mode():
+            with torch.no_grad():
+                for images, _, patches_idx, _ in tqdm(data_loader):
+                    if gpu is not None:
+                        images = images.cuda(gpu, non_blocking=True)
+                        
+                    embeddings = model(images,
+                                       return_embeddings=True)
+                    self.update_embeddings(patches_idx=patches_idx,
+                                           embeddings=embeddings)
+            
+            assert data_loader.dataset.__len__() == torch.sum(torch.max(self._memory, dim=-1)[0] != 0).item(), \
+                'memory is not completely built up.'
+            assert data_loader.dataset.__len__() == int(torch.sum(self._mask).item()), \
+                'memory is not completely built up.'
+            assert self.n_p == int(torch.sum(self._mask).item()), 'memory is not completely built up'
+        
+        if is_model_training:
+            model.train()
+         
     @staticmethod
     def get_neighbour_memory_idxs(k: int,
                                   patch: PatchFromFile):

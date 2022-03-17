@@ -3,6 +3,7 @@ Provide a CustomPatchesDataset to work with WSI and Patches objects.
 
 """
 
+from contextlib import contextmanager
 from typing import List, Union
 
 import torch
@@ -85,3 +86,10 @@ class AttentionPatchesDataset(Dataset):
             patch_img = self.transform(patch_img)
 
         return patch_img, label, patch_idx, patch_neighbour_idxs
+    
+    @contextmanager
+    def all_patch_mode(self):
+        """Set context to receive all patches from wsi (instead of sampled ones).
+        """
+        with self.wsi_dataset.all_patch_mode():
+            yield(self)

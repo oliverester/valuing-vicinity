@@ -266,17 +266,10 @@ class DataProvider():
         # Data loading code
         if self.train_set is not None:
 
-            train_dataset = self.dataset_type(dataset_root=self.train_data,
-                                              embeddings_root=self.embeddings_root,
-                                              root_contains_wsi_label=self.image_label_in_path,
-                                              patch_sampling=self.patch_sampling,
-                                              exclude_patch_class=self.exclude_patch_class,
-                                              include_patch_class=self.include_patch_class,
-                                              patch_label_handler=self.patch_label_handler,
-                                              image_label_handler=self.image_label_handler,
-                                              patch_label_type=self.patch_label_type,
-                                              draw_patches_per_class=self.draw_patches_per_class,
-                                              draw_patches_per_wsi=self.draw_patches_per_wsi)
+            train_dataset = self.dataset_type(wsi_dataset=self.train_set,
+                                              transform=self.train_aug_transform,
+                                              patch_label_type=self.patch_label_type
+                                              )
 
             if self.distributed:
                 train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -293,7 +286,7 @@ class DataProvider():
                                                        sampler=train_sampler,
                                                        drop_last=True,
                                                        collate_fn=self.collate_fn,
-                                                       persistent_workers=True if self.workers > 0 and self.nfold is None else False
+                                                       #persistent_workers=True if self.workers > 0 and self.nfold is None else False
                                                        )
 
             return train_loader, train_sampler, train_dataset.get_label_handler()
@@ -313,7 +306,8 @@ class DataProvider():
                                                       num_workers=self.workers,
                                                       pin_memory=True,
                                                       collate_fn=self.collate_fn,
-                                                      persistent_workers=False)
+                                                      persistent_workers=False
+                                                      )
 
             return test_loader, test_dataset.get_label_handler()
 
@@ -336,7 +330,8 @@ class DataProvider():
                                                  num_workers=self.workers,
                                                  pin_memory=True,
                                                  collate_fn=self.collate_fn,
-                                                 persistent_workers=True if self.workers > 0 and self.nfold is None else False)
+                                                 #persistent_workers=True if self.workers > 0 and self.nfold is None else False
+                                                 )
 
         return wsi_loader
 
@@ -389,10 +384,9 @@ class HoldoutSet():
             drop_last=True,
             collate_fn=self.data_provider.collate_fn,
             # does not work for parallel experiemtns (folds..)
-            persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
         )
 
-        
         self.big_train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
             batch_size=int(self.data_provider.val_batch_size),
@@ -400,7 +394,7 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
         )
 
         self.vali_loader = torch.utils.data.DataLoader(
@@ -410,7 +404,7 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
         )
 
 class McSet():

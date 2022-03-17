@@ -42,7 +42,6 @@ def log_step(phase,
              args):
     
     if args.log_details:  
-        logits_cpu = logits_gpu.cpu()
         labels_gpu.detach()
         logits_gpu.detach()
         
@@ -50,7 +49,7 @@ def log_step(phase,
         if attention_gpu is not None:   
             attention = attention_gpu.detach()             
             # ensure central patch is not considered:
-            k = (neighbour_masks.shape[-1]-1)/2
+            k = (neighbour_masks.shape[-1]-1)//2
             neighbour_masks[:, k, k] = 0
             neighbour_masks = neighbour_masks.view(-1,1,1,(k*2+1)*(k*2+1)).cuda(args.gpu, non_blocking=True) # over all heads, neighbour to 1d
             
@@ -77,7 +76,7 @@ def log_step(phase,
             excess_contribution_central_attention = None
             coeff_var_neighbour_attention = None
             
-        batch_accuracy = torch.sum(logits_cpu.argmax(axis=1) == labels_gpu)/(len(images)*256*256)
+        batch_accuracy = torch.sum(logits_gpu.argmax(axis=1) == labels_gpu)/torch.numel(labels_gpu)
 
         step_dice_nominator = dice_nominator(y_true=labels_gpu,
                                             y_pred=torch.argmax(logits_gpu, dim=1),

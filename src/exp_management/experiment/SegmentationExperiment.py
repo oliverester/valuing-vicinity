@@ -320,9 +320,9 @@ class SegmentationExperiment(MLExperiment):
                         patches[patch_counter].set_prediction(img)
                         
                         # seg true mask
-                        true_img = self.mask_to_img(mask=mask_batch.cpu(),
+                        true_mask = self.mask_to_img(mask=mask_batch.cpu(),
                                                     label_handler=data_provider.label_handler)
-                        patches[patch_counter].true_mask = true_img
+                        patches[patch_counter].true_mask = true_mask
                         
                         # heatmap
                         heatmap = self.mask_to_img(mask=true_positive_mask.cpu(),
@@ -719,10 +719,10 @@ class NeighbourBatch:
         
     # custom memory pinning method on custom type
     def pin_memory(self):
-        # self.img = self.img.pin_memory()
-        # self.mask = self.mask.pin_memory()
-        # self.patch_idx = self.patch_idx.pin_memory()
-        # self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        self.patch_idx = self.patch_idx.pin_memory()
+        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
         return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
     
 class MultiscaleBatch:

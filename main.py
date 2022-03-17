@@ -1,5 +1,5 @@
-from src.deephist.attention_segmentation.AttentionSegmentationExperiment import AttentionSegmentationExperiment
-from src.deephist.run_experiment import run_experiment
+from src.exp_management.experiment.SegmentationExperiment import AttentionSegmentationExperiment
+from src.exp_management.run_experiment import run_experiment
 
 if __name__ == '__main__':
   
