@@ -2,15 +2,11 @@
 Run supervised ML-experiment
 """
 
-from copy import deepcopy
 import math
 import multiprocessing as mp
-from multiprocessing.pool import ThreadPool
 import os
 from pathlib import Path
-from queue import Queue
 import random
-import traceback
 from typing import List
 
 from prettytable import PrettyTable
@@ -23,9 +19,9 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
+from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 from src.exp_management.experiment.Experiment import Experiment
-from src.exp_management.data_provider import CvSet, DataProvider, HoldoutSet
-from src.lib.NestablePool.nestable_pool import NestablePool
+from src.exp_management.data_provider import CvSet, HoldoutSet
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
 
@@ -54,7 +50,13 @@ def run_experiment(exp: Experiment):
 
 
 def run_kfold_model(cv_set: CvSet,
-                      exp: Experiment):
+                    exp: Experiment):
+    """Runs multiple folds in parallel on given GPUs.
+
+    Args:
+        cv_set (CvSet): _description_
+        exp (Experiment): _description_
+    """
     m = mp.Manager()
     gpu_queue = m.Queue()
     # initialize queue
@@ -69,10 +71,18 @@ def run_kfold_model(cv_set: CvSet,
                                 start_method='spawn')
         
 
-def run_holdout_model_in_parallel(proc_idx,
+def run_holdout_model_in_parallel(proc_idx: int,
                                   holdout_sets: List[HoldoutSet],
                                   gpu_queue: mp.Queue,
                                   exp: Experiment):
+    """Wrapper to run a holdout set in parallel
+
+    Args:
+        proc_idx (int): Fold-id
+        holdout_sets (List[HoldoutSet]): _description_
+        gpu_queue (mp.Queue): _description_
+        exp (Experiment): _description_
+    """
     
     holdout_set = holdout_sets[proc_idx]
     # tread safe gpu id:
@@ -91,9 +101,15 @@ def run_holdout_model_in_parallel(proc_idx,
     # free gpu again
     gpu_queue.put(exp.args.gpu)
 
-def run_holdout(exp,
-                holdout_set,
-                writer):
+def run_holdout(exp: Experiment,
+                holdout_set: HoldoutSet):
+    """
+    Runs a holdout set. First train, second evaluate.
+
+    Args:
+        exp (Experiment): _description_
+        holdout_set (HoldoutSet): _description_
+    """
     
     writer = SummaryWriter(exp.args.log_path)
     
@@ -114,11 +130,22 @@ def run_holdout(exp,
     
     writer.close()
     
-def eval_holdout_model(holdout_set,
-                       test_set,
-                       exp,
-                       reload_from,
-                       writer):
+def eval_holdout_model(holdout_set: HoldoutSet,
+                       test_set: WSIDatasetFolder,
+                       exp: Experiment,
+                       reload_from: str,
+                       writer: SummaryWriter):
+    """
+    Evaluates a holdout set from a reloaded model - optionally with test data.
+
+    Args:
+        holdout_set (HoldoutSet): _description_
+        test_set (WSIDatasetFolder): _description_
+        exp (Experiment): _description_
+        reload_from (str): _description_
+        writer (SummaryWriter): _description_
+    """
+    
     
     model = exp.model
     reload_epoch = reload_model(model=model,
@@ -267,6 +294,18 @@ def evaluate_model(exp: Experiment,
                    epoch: int = None,
                    save_to_folder: bool = False,
                    log_metrics: bool = False):
+    """ Given a model, the WSIs are first inferenced patch-wise and then evaluated (viz, metrics) 
+
+    Args:
+        exp (Experiment): _description_
+        model (nn.modules): _description_
+        wsis (List[WSIFromFolder]): _description_
+        writer (SummaryWriter): _description_
+        tag (str): _description_
+        epoch (int, optional): _description_. Defaults to None.
+        save_to_folder (bool, optional): _description_. Defaults to False.
+        log_metrics (bool, optional): _description_. Defaults to False.
+    """
     
     print(f"Evaluating {tag} WSIs.")
           

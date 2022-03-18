@@ -5,7 +5,7 @@ gpus: [1,2,3,4,5]
 workers: 4
 batch-size: 32
 val-batch-size: 256
-epochs: 200
+epochs: 1
 #include-val-inference: True
 #reload-model-folder: /homes/oester/repositories/valuingvicinity/logdir_test/a_camelyon_d16_deeplab_resnet18_k8/attention_segmentation-2022-03-04_10_54_57
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d4_train
@@ -22,7 +22,7 @@ include-classes: [0,1,2]
 normalize: true
 logdir: logdir_test/a_camelyon_d4_deeplab_resnet18_k8
 evaluate-every: 0
-warm-up-epochs: 5
+warm-up-epochs: 0
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
 use-ce-weights: false
