@@ -1,7 +1,7 @@
 arch: deeplabv3
 encoder: resnet18
-#gpus: [3,4]
-gpu: 3
+gpus: [1,2,3,4,5]
+#gpu: 3
 workers: 4
 batch-size: 32
 val-batch-size: 256
@@ -12,8 +12,8 @@ train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map_camelyon.json
 patch-label-type: mask
 draw-patches-per-class: 100
-#nfold: 2
-vali-split: 0.2
+nfold: 5
+#vali-split: 0.2
 learning-rate: 0.0001
 lr-gamma: 0.95
 adjust-lr: true

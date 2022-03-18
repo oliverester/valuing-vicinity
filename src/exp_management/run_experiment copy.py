@@ -37,68 +37,16 @@ def run_experiment(exp: Experiment):
     """
     args = exp.args
     
+    writer = SummaryWriter(args.log_path)
+
     # prepare data
     data_provider = exp.data_provider
 
     args.number_of_classes = data_provider.number_classes
     exp.exp_log(number_of_classes=args.number_of_classes)
-    
-    # either holdout or cv (/monte-carlo)
-    if data_provider.holdout_set is not None:
-        run_holdout(holdout_set=data_provider.holdout_set,
-                    exp=exp)
-    else:
-        run_kfold_model(cv_set=data_provider.cv_set,
-                          exp=exp)
-
-
-
-def run_kfold_model(cv_set: CvSet,
-                      exp: Experiment):
-    m = mp.Manager()
-    gpu_queue = m.Queue()
-    # initialize queue
-    for gpu_id in exp.args.gpus:
-        gpu_queue.put(gpu_id)
-    
-    torch.multiprocessing.spawn(run_holdout_model_in_parallel, 
-                                args=(cv_set.holdout_sets, gpu_queue, exp), 
-                                nprocs=len(exp.args.gpus), 
-                                join=True, 
-                                daemon=False,
-                                start_method='spawn')
-        
-
-def run_holdout_model_in_parallel(proc_idx,
-                                  holdout_sets: List[HoldoutSet],
-                                  gpu_queue: mp.Queue,
-                                  exp: Experiment):
-    
-    holdout_set = holdout_sets[proc_idx]
-    # tread safe gpu id:
-    exp.args.gpu = gpu_queue.get()
-    
-    # settings for folds
-    exp.set_fold(fold=holdout_set.fold)
-    
-    exp.args.fold = holdout_set.fold
-    print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
-    
-    run_holdout(holdout_set=holdout_set,
-                exp=exp)
-    
-    print(f"Finished fold {holdout_set.fold}")
-    # free gpu again
-    gpu_queue.put(exp.args.gpu)
-
-def run_holdout(exp,
-                holdout_set,
-                writer):
-    
-    writer = SummaryWriter(exp.args.log_path)
-    
+  
     if exp.args.reload_model_folder is None:
-        train_holdout_model(holdout_set=holdout_set,
+        model = train_model(data_provider=data_provider,
                             exp=exp,
                             writer=writer)
         reload_from = exp.args.log_path
@@ -106,20 +54,6 @@ def run_holdout(exp,
         print(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
         reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder
         
-    eval_holdout_model(holdout_set=holdout_set,
-                       test_set=exp.data_provider.test_wsi_dataset,
-                       exp=exp,
-                       reload_from=reload_from,
-                       writer=writer)
-    
-    writer.close()
-    
-def eval_holdout_model(holdout_set,
-                       test_set,
-                       exp,
-                       reload_from,
-                       writer):
-    
     model = exp.model
     reload_epoch = reload_model(model=model,
                                 model_path=reload_from,
@@ -130,7 +64,7 @@ def eval_holdout_model(holdout_set,
         print("Evaluating final validation wsis")
         evaluate_model(exp=exp,
                        model=model,
-                       wsis=holdout_set.vali_wsi_dataset.wsis,
+                       wsis=data_provider.holdout_set.vali_wsi_dataset.wsis,
                        writer=writer,
                        epoch=reload_epoch,
                        save_to_folder=True,
@@ -142,12 +76,83 @@ def eval_holdout_model(holdout_set,
         ## evaluate WSI
         evaluate_model(exp=exp,
                        model=model,
-                       wsis=test_set.wsis,
+                       wsis=data_provider.test_wsi_dataset.wsis,
                        writer=writer,
                        tag='test',
                        save_to_folder=True,
                        log_metrics=True)
         
+    writer.close()
+
+def train_model(data_provider: DataProvider,
+                exp: Experiment,
+                writer: SummaryWriter):
+
+    if data_provider.holdout_set is not None:
+        model = train_holdout_model(holdout_set=data_provider.holdout_set,
+                                   exp=exp,
+                                   writer=writer)
+    else:
+        model = train_kfold_model(cv_set=data_provider.cv_set,
+                                  exp=exp)
+    return model
+
+def train_kfold_model(cv_set: CvSet,
+                      exp: Experiment):
+    m = mp.Manager()
+    gpu_queue = m.Queue()
+    # initialize queue
+    for gpu_id in exp.args.gpus:
+        gpu_queue.put(gpu_id)
+    
+    torch.multiprocessing.spawn(train_holdout_model_in_parallel, 
+                                args=(cv_set.holdout_sets, gpu_queue, exp), 
+                                nprocs=len(exp.args.gpus), 
+                                join=True, 
+                                daemon=False,
+                                start_method='spawn')
+    
+    # def _exception_callback(e):
+    #     pool.terminate()
+    #     print(traceback.format_exc())
+    #     raise e
+    
+    # # spawn processes per available gpus: use nestable Pool to avoid daemonic subprocesses
+    # #pool = mp.get_context('spawn').Pool(processes=len(exp.args.gpus)) 
+    # pool = NestablePool(processes=len(exp.args.gpus)) 
+    # for holdout_set in cv_set.holdout_sets:
+    #     pool.apply_async(train_holdout_model_in_parallel,
+    #                      (holdout_set,
+    #                       gpu_queue,
+    #                       exp),
+    #                      error_callback=_exception_callback)
+    # pool.close()
+    # pool.join()
+    
+
+def train_holdout_model_in_parallel(proc_idx,
+                                    holdout_sets: List[HoldoutSet],
+                                    gpu_queue: mp.Queue,
+                                    exp: Experiment):
+    
+    holdout_set = holdout_sets[proc_idx]
+    # tread safe gpu id:
+    exp.args.gpu = gpu_queue.get()
+    
+    # settings for folds
+    exp.set_fold(fold=holdout_set.fold)
+    
+    writer = SummaryWriter(exp.args.log_path)
+    
+    exp.args.fold = holdout_set.fold
+    print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+    train_holdout_model(holdout_set=holdout_set,
+                        exp=exp,
+                        writer=writer)
+    print(f"Finished fold {holdout_set.fold}")
+    # free gpu again
+    gpu_queue.put(exp.args.gpu)
+
 def train_holdout_model(holdout_set: HoldoutSet,
                         exp: Experiment,
                         writer: SummaryWriter):
@@ -258,6 +263,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                            epoch=epoch,
                            tag='vali')
 
+    return model 
 
 def evaluate_model(exp: Experiment,
                    model: nn.modules,
