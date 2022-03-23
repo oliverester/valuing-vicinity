@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict
 
 import src.deephist.evaluate.evaluate_attention as att
-import src.deephist.evaluate.evaluate_multiscale as ms
+import deephist.evaluate.evaluate_multiscale as ms
 import src.deephist.evaluate.evaluate_baseline as bs
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.run_experiment import reload_model

@@ -4,8 +4,8 @@ gpu: 1
 workers: 8
 batch-size: 32
 val-batch-size: 256
-epochs: 200
-train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d128_train
+epochs: 20
+train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d128_debug
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask
 draw-patches-per-class: 100
@@ -16,9 +16,10 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
+augment: true
 logdir: logdir_test/a_d128_deeplab
 evaluate-every: 0
-warm-up-epochs: 5
+warm-up-epochs: 1
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
 n-eval-wsis: 10
@@ -31,7 +32,7 @@ learn-pos-encoding: false
 num-attention-heads: 8
 attention-hidden-dim: 1024
 use-self-attention: false
-log-details: false
+log-details: true
 memory-to-gpu: true
 seed: 13
 performance-metric: loss

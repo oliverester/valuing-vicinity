@@ -402,7 +402,7 @@ class WSIDatasetFolder:
         For overundersamping, a balanced draw number between highest and lowest class
         occurence is determined by N_draw = (ln(N_highest/N_lowest) / ln(2)) / 2 * N_lowest.
         N_draw patches are then drawn from each class with repetition.
-        If samping is None, all patches are included.
+        If sampling is None, all patches are included.
         """
 
         if self.patch_sampling is not None:

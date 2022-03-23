@@ -94,9 +94,16 @@ class AttentionSegmentationConfig(Config):
                             help='select to switch hem activation on every batch.')
         parser.add_argument('--hard-example-mining-per-class', action='store_true',
                             help='select to apply hem class-wise.')
-        parser.add_argument('--hue-aug-ratio', type=float, default=None,
-                            help='Select ratio for pytorch hue-transform in trainset.'
-                            'Top ratio-percentage hardest examples are selected')
+        parser.add_argument('--hue', type=float, default=0.05,
+                            help='Select hue for pytorch jitter-transform in trainset.')
+        parser.add_argument('--brightness', type=float, default=0.05,
+                            help='Select brightness for pytorch jitter-transform in trainset.')
+        parser.add_argument('--saturation', type=float, default=0.05,
+                            help='Select saturation for pytorch jitter-transform in trainset.')
+        parser.add_argument('--contrast', type=float, default=0.05,
+                            help='Select contrast for pytorch jitter-transform in trainset.')
+        parser.add_argument('--augment', action='store_true',
+                            help='select to apply augmentations.')
         parser.add_argument('--criterion', default=None, type=str,
                             choices= ['cross_entropy', 'focal_tversky', 'dice', 'focal',
                                       'focal+dice', 'focal+focal_tversky', 'ce+dice'],

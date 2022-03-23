@@ -12,14 +12,16 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
-from src.exp_management.data_provider import HoldoutSet
-from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management import tracking
+from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
+from src.exp_management.experiment.Experiment import Experiment
+from src.exp_management.data_provider import HoldoutSet
 from src.pytorch_datasets.label_handler import LabelHandler
 
 
 
-def train_epoch(holdout_set: HoldoutSet,
+def train_epoch(exp: Experiment,
+                holdout_set: HoldoutSet,
                 model: nn.Module,
                 criterion: _Loss,
                 optimizer: torch.optim.Optimizer,
@@ -107,7 +109,7 @@ def train_epoch(holdout_set: HoldoutSet,
             if args.log_details:
                 # measure data loading time
                 if sample_images is None:
-                    sample_images = images
+                    sample_images = exp.unnormalize(images)
                     sample_labels = labels
                     sample_preds = logits.cpu().argmax(axis=1)
                     

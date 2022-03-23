@@ -22,7 +22,7 @@ from src.deephist.segmentation.multiscale_segmentation.multiscale.models.Ymm2cla
 from src.deephist.segmentation.semantic_segmentation.CustomPatchesDataset import CustomPatchesDataset
 from src.exp_management.data_provider import DataProvider
 from src.exp_management import tracking
-from src.exp_management.experiment.MLExperiment import MLExperiment
+from src.exp_management.experiment.MLExperiment import MLExperiment, UnNormalize
 from src.exp_management.evaluation.confusion_matrix import torch_conf_matrix
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management.evaluation.jaccard import jaccard, jaccard_denominator, jaccard_nominator
@@ -73,8 +73,6 @@ class SegmentationExperiment(MLExperiment):
                                      merge_classes=args.merge_classes,
                                      draw_patches_per_class=args.draw_patches_per_class,
                                      draw_patches_per_wsi=args.draw_patches_per_wsi,
-                                     normalize=args.normalize,
-                                     hue_aug_ratio=args.hue_aug_ratio,
                                      label_map_file=args.label_map_file,
                                      batch_size=args.batch_size,
                                      val_batch_size=args.val_batch_size,
@@ -189,7 +187,8 @@ class SegmentationExperiment(MLExperiment):
                              **kwargs):
         
         if self.args.attention_on:
-            new_performance = train_epoch(holdout_set=holdout_set,
+            new_performance = train_epoch(exp=self,
+                                          holdout_set=holdout_set,
                                           model=model,
                                           criterion=criterion,
                                           optimizer=optimizer,
@@ -198,7 +197,8 @@ class SegmentationExperiment(MLExperiment):
                                           args=args,
                                           writer=writer)
         elif self.args.multiscale_on:
-            new_performance = train_multiscale.train_epoch(holdout_set=holdout_set,
+            new_performance = train_multiscale.train_epoch(exp=self,
+                                                           holdout_set=holdout_set,
                                                            model=model,
                                                            criterion=criterion,
                                                            optimizer=optimizer,
@@ -207,7 +207,8 @@ class SegmentationExperiment(MLExperiment):
                                                            args=args,
                                                            writer=writer)
         else:
-            new_performance = train_semantic.train_epoch(holdout_set=holdout_set,
+            new_performance = train_semantic.train_epoch(exp=self,
+                                                         holdout_set=holdout_set,
                                                          model=model,
                                                          criterion=criterion,
                                                          optimizer=optimizer,
@@ -672,9 +673,13 @@ class SegmentationExperiment(MLExperiment):
     def get_augmention(self) -> Tuple[transforms.Compose, transforms.Compose]:
         
         # pytorch resnet normalization values https://pytorch.org/hub/pytorch_vision_resnet/
-        self.normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                  std=[0.229, 0.224, 0.225])
-
+        rn_mean = [0.485, 0.456, 0.406]
+        rn_std = [0.229, 0.224, 0.225]
+        normalization = transforms.Normalize(mean=rn_mean,
+                                             std=rn_std)
+        self.unnormalize = UnNormalize(mean=rn_mean,
+                                       std=rn_std)
+        
         ## validation
         val_transforms = [
             transforms.Resize(256),
@@ -682,22 +687,26 @@ class SegmentationExperiment(MLExperiment):
             ]
 
         if self.args.normalize is True:
-            val_transforms.append(self.normalization)
+            val_transforms.append(normalization)
 
         val_aug_transform = transforms.Compose(val_transforms)
 
         ##train
         train_transforms = []
-        if self.args.hue_aug_ratio is not None:
-            train_transforms.append(transforms.ColorJitter(hue=self.args.hue_aug_ratio))
-
+        if self.args.augment is True:
+            #flip along the axis, saturation and brightness transformation.
+            train_transforms.append(transforms.ColorJitter(brightness=self.args.brightness, 
+                                                           contrast=self.args.contrast, 
+                                                           saturation=self.args.saturation, 
+                                                           hue=self.args.hue))        
+        
         train_transforms.extend([
             transforms.Resize(256),
             transforms.ToTensor(),
         ])
 
         if self.args.normalize is True:
-            train_transforms.append(self.normalization)
+            train_transforms.append(normalization)
 
         train_aug_transform = transforms.Compose(train_transforms)
         

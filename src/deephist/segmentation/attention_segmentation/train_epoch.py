@@ -13,12 +13,14 @@ import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
 from src.deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
-from src.exp_management.data_provider import HoldoutSet
 from src.exp_management import tracking
+from src.exp_management.data_provider import HoldoutSet
+from src.exp_management.experiment.Experiment import Experiment
 from src.pytorch_datasets.label_handler import LabelHandler
 
 
-def train_epoch(holdout_set: HoldoutSet,
+def train_epoch(exp: Experiment,
+                holdout_set: HoldoutSet,
                 model: nn.Module,
                 criterion: _Loss,
                 optimizer: torch.optim.Optimizer,
@@ -149,7 +151,7 @@ def train_epoch(holdout_set: HoldoutSet,
             epoch_dice_denominator += step_dice_denominator
                 
             if sample_images is None:
-                sample_images = images
+                sample_images = exp.unnormalize(images)
                 sample_labels = labels
                 sample_preds = logits.detach().argmax(axis=1).cpu()
                 

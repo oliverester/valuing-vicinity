@@ -34,8 +34,6 @@ class DataProvider():
                  draw_patches_per_class: int = None,
                  draw_patches_per_wsi: int = None,
                  label_map_file: str = None,
-                 hue_aug_ratio: float = None,
-                 normalize: bool = False,
                  batch_size: int = None,
                  val_batch_size: int = None,
                  test_batch_size: int = None,
@@ -149,8 +147,6 @@ class DataProvider():
         self.multiscale_on = multiscale_on
         
         #augmentation
-        self.hue_aug_ratio = hue_aug_ratio
-        self.normalize = normalize
         self._set_augmentation()
 
         # on reload with provided test data, do not prepare train data
@@ -284,7 +280,7 @@ class DataProvider():
                                                        num_workers=self.workers,
                                                        pin_memory=True,
                                                        sampler=train_sampler,
-                                                       drop_last=True,
+                                                       drop_last=False,
                                                        collate_fn=self.collate_fn,
                                                        #persistent_workers=True if self.workers > 0 and self.nfold is None else False
                                                        )
@@ -381,7 +377,7 @@ class HoldoutSet():
             shuffle=True,
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
             collate_fn=self.data_provider.collate_fn,
             # does not work for parallel experiemtns (folds..)
             #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False

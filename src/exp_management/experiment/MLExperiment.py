@@ -31,6 +31,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                          config_parser=config_parser,
                          prefix=prefix,
                          testmode=testmode)
+        
 
     @abstractmethod
     def set_model(self) -> nn.Module:
@@ -197,3 +198,21 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                                       Union[None, transforms.Compose]
                                       ]:
         return None, None
+    
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, batch):
+        """
+        Args:
+            tensor (Tensor): batch of image of size (B,C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for i in range(batch.shape[0]):
+            for t, m, s in zip(batch[i], self.mean, self.std):
+                t.mul_(s).add_(m)
+                # The normalize code -> t.sub_(m).div_(s)
+        return batch
