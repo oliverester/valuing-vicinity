@@ -1,9 +1,10 @@
 import math
-import numpy as np
 
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
+
+from src.deephist.segmentation.attention_segmentation.models.position_encoding import PositionalEncoding, _2DPositionalEmbedding
 
 class MultiheadAttention(nn.Module):
 
@@ -15,12 +16,25 @@ class MultiheadAttention(nn.Module):
                  use_ln=False, 
                  use_pos_encoding=False,
                  learn_pos_encoding=False):
+        """_summary_
+
+        Args:
+            input_dim (_type_): Dimension of patch embeddings
+            hidden_dim (_type_): Hidden dimension of internal representation (over all heads).
+            num_heads (_type_): Number of heads
+            kernel_size (_type_): Neighbourhood length
+            use_ln (bool, optional): Use layer normalization for k, q, v. Defaults to False.
+            use_pos_encoding (bool, optional): Use sinusiodal position encoding. Defaults to False.
+            learn_pos_encoding (bool, optional): Use learnable 2-d position embeddings. Defaults to False.
+        """
         super().__init__()
         assert hidden_dim % num_heads == 0, "Embedding dimension must be 0 modulo number of heads."
 
         self.use_ln = use_ln
         self.use_pos_encoding = use_pos_encoding
         self.learn_pos_encoding = learn_pos_encoding
+        
+        assert(use_pos_encoding + learn_pos_encoding < 1), "Either use (sin.) position encoding or learn (2d) embeddings." 
         
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
@@ -38,9 +52,8 @@ class MultiheadAttention(nn.Module):
         # relative pos embedding for each spatial dim of kernel
     
         if self.learn_pos_encoding:
-            # 2D position encoding: patches share a col and row pos embedding, that are concatenated
-            self.pos_h = nn.Parameter(torch.randn(1, 1, 1, kernel_size, hidden_dim // 2  // num_heads), requires_grad=True) 
-            self.pos_w = nn.Parameter(torch.randn(1, 1, kernel_size, 1, hidden_dim // 2  // num_heads), requires_grad=True)
+            self._2d_pos_emb = _2DPositionalEmbedding(d_hid=hidden_dim // num_heads,
+                                                      n_position=kernel_size)
         else: 
             self.pos_enc = PositionalEncoding(d_hid=hidden_dim // num_heads,
                                               n_position=kernel_size*kernel_size)
@@ -55,10 +68,6 @@ class MultiheadAttention(nn.Module):
         self.q_proj.bias.data.fill_(0)
         nn.init.xavier_uniform_(self.o_proj.weight)
         self.o_proj.bias.data.fill_(0)
-        
-        if self.learn_pos_encoding:
-            nn.init.normal_(self.pos_h, 0, 1)
-            nn.init.normal_(self.pos_w, 0, 1)
         
     def forward(self, q, kv, mask=None, return_attention=False):
         batch_size, seq_length, _ = kv.size()
@@ -81,19 +90,11 @@ class MultiheadAttention(nn.Module):
         
         if self.use_pos_encoding:
             if self.learn_pos_encoding:
-                # 2D position learnable encoding
-            
-                # apply head-invariant relative position encoding
-                k_h, k_w = k.split(hidden_dim // self.num_heads // 2, dim=-1)
-                # break up kernel to apply spatial-wise pos encoding addition
-                k_h = k_h.view((batch_size, self.num_heads , self.kernel_size, self.kernel_size, hidden_dim // self.num_heads // 2))
-                k_w = k_w.view((batch_size, self.num_heads , self.kernel_size, self.kernel_size, hidden_dim // self.num_heads // 2))
-                # add relative position encoding
-                k = torch.cat((k_h + self.pos_h, k_w + self.pos_w), dim=-1)
-                k = k.view((batch_size, self.num_heads , seq_length, hidden_dim // self.num_heads))
+               # 2D position learnable embedding
+               k = self._2d_pos_emb(k)
             else:
-                # 1D siusoid positional encoding
-                k = self.pos_enc(k)
+               # 1D siusoid positional encoding
+               k = self.pos_enc(k)
             
         # Determine value outputs
         values, attention = scaled_dot_product(q, k, v, mask=mask)
@@ -106,44 +107,6 @@ class MultiheadAttention(nn.Module):
         else:
             return o
         
-class PositionalEncoding(nn.Module):
-    """
-    From https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/master/transformer/Models.py
-    """
-
-    def __init__(self, d_hid, n_position):
-        super(PositionalEncoding, self).__init__()
-
-        # Not a parameter
-        self.register_buffer('pos_table', self._get_sinusoid_encoding_table(n_position, d_hid))
-
-    def _get_sinusoid_encoding_table(self, n_position, d_hid):
-        ''' Sinusoid position encoding table '''
-
-        def get_position_angle_vec(position):
-            return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
-
-        sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])
-        sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
-        sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
-
-        return torch.FloatTensor(sinusoid_table).unsqueeze(0)
-
-    def forward(self, x):
-        return x + self.pos_table.clone().detach()
-
-def position_encoding_init(n_position, d_hid):
-    ''' Init the sinusoid position encoding table '''
-
-    def get_position_angle_vec(position):
-        return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
-
-    sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])
-    sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
-    sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
-
-    return torch.from_numpy(sinusoid_table).type(torch.FloatTensor)
-
         
 def scaled_dot_product(q, k, v, mask=None):
     d_k = q.size()[-1]
