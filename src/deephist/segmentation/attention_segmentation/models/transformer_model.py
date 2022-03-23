@@ -3,11 +3,14 @@ Adjusted from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/vi
 '''
 
 
+from re import X
 import torch
 from torch import nn
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+
+from src.deephist.segmentation.attention_segmentation.models.position_encoding import PositionalEncoding
 
 # helpers
 
@@ -54,17 +57,21 @@ class Attention(nn.Module):
             nn.Dropout(dropout)
         ) if project_out else nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-
+        # mask logits 
+        if mask is not None:
+            dots = dots.masked_fill(mask == 0, -9e15)
         attn = self.attend(dots)
 
         out = torch.matmul(attn, v)
         out = rearrange(out, 'b h n d -> b n (h d)')
-        return self.to_out(out)
+        # mask output
+        out = out.masked_fill(mask.squeeze().unsqueeze(dim=2) == 0, -9e15)
+        return self.to_out(out), attn
 
 class Transformer(nn.Module):
     def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
@@ -75,52 +82,48 @@ class Transformer(nn.Module):
                 PreNorm(dim, Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout)),
                 PreNorm(dim, FeedForward(dim, mlp_dim, dropout = dropout))
             ]))
-    def forward(self, x):
+    def forward(self, x, mask):
+        attns = []
         for attn, ff in self.layers:
-            x = attn(x) + x
+            att_x, attention = attn(x, mask=mask)
+            x = att_x + x
             x = ff(x) + x
-        return x
+            attns.append(attention.detach())
+        return x, torch.stack(attns)
 
 class ViT(nn.Module):
-    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+    def __init__(self, 
+                 kernel_size, 
+                 dim, 
+                 depth, 
+                 heads, 
+                 mlp_dim, 
+                 hidde_dim,
+                 dropout = 0.,
+                 emb_dropout = 0.):
         super().__init__()
-        image_height, image_width = pair(image_size)
-        patch_height, patch_width = pair(patch_size)
-
-        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
-
-        num_patches = (image_height // patch_height) * (image_width // patch_width)
-        patch_dim = channels * patch_height * patch_width
-        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
-
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            nn.Linear(patch_dim, dim),
-        )
-
-        self.pos_embedding = position_encoding_init #nn.Parameter(torch.randn(1, num_patches + 1, dim))
-        #self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.kernel_size = kernel_size
+    
+        self.pos_embedding = PositionalEncoding(d_hid=hidde_dim,
+                                                n_position=kernel_size*kernel_size)
         self.dropout = nn.Dropout(emb_dropout)
+        self.transformer = Transformer(dim=dim, 
+                                       depth=depth, 
+                                       heads=heads,
+                                       dim_head=hidde_dim // heads,
+                                       mlp_dim=mlp_dim,
+                                       dropout=dropout)
 
-        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
+    def forward(self, x, mask=None, return_attention=False):
 
-        self.pool = pool
-        self.to_latent = nn.Identity()
-
-        self.mlp_head = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, num_classes)
-        )
-
-    def forward(self, q, kv, mask=None, return_attention=False):
-        #x = self.to_patch_embedding(img)
-        #b, n, _ = x.shape
-
-        #cls_tokens = repeat(self.cls_token, '() n d -> b n d', b = b)
-        #x = torch.cat((cls_tokens, x), dim=1)
-        x += self.pos_embedding
+        x += self.pos_embedding(x, mask)
         x = self.dropout(x)
 
-        x = self.transformer(x)
-
-        return self.x
+        x, attention = self.transformer(x, mask=mask)
+        
+        # select center patch only
+        center_x = x[:,(self.kernel_size*self.kernel_size-1)//2,:]
+        if return_attention:
+            return center_x, attention
+        else:
+            return center_x

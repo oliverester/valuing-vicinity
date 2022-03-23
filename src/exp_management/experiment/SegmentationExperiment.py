@@ -172,7 +172,8 @@ class SegmentationExperiment(MLExperiment):
                                                     use_pos_encoding=self.args.use_pos_encoding,
                                                     use_central_attention=self.args.use_self_attention,
                                                     learn_pos_encoding=self.args.learn_pos_encoding,
-                                                    attention_on=self.args.attention_on
+                                                    attention_on=self.args.attention_on,
+                                                    use_transformer=self.args.use_transformer
                                                     )
     
     def run_train_vali_epoch(self,

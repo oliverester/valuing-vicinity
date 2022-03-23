@@ -26,7 +26,7 @@ class PositionalEncoding(nn.Module):
 
         return torch.FloatTensor(sinusoid_table).unsqueeze(0)
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         return x + self.pos_table.clone().detach()
 
 

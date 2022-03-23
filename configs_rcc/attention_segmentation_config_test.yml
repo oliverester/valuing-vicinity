@@ -2,8 +2,8 @@ arch: unet
 encoder: resnet50
 gpu: 5
 workers: 0
-batch-size: 2
-val-batch-size: 2
+batch-size: 32
+val-batch-size: 256
 test-batch-size: 200
 epochs: 2
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d128_debug
@@ -28,7 +28,7 @@ use-ce-weights: true
 n-eval-wsis: 10
 overlay-polygons: true
 embedding-dim: 1024
-k-neighbours: 0
+k-neighbours: 3
 use-ln: true
 use-pos-encoding: true
 learn-pos-encoding: false
@@ -39,5 +39,6 @@ log-details: false
 memory-to-gpu: true
 seed: 13
 performance-metric: loss
-attention-on: false
-multiscale-on: true
+attention-on: true
+multiscale-on: false
+use_transformer: true

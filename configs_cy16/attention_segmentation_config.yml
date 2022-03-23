@@ -43,3 +43,4 @@ seed: 13
 performance-metric: loss
 attention-on : true
 multiscale-on: false
+use_transformer: true
