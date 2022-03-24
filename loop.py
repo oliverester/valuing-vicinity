@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from time import sleep
 import traceback
 
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
@@ -13,7 +14,7 @@ if __name__ == '__main__':
     
     while True:
         # get configs
-        configs_files = [str(p) for p in list(base.glob("*"))]
+        configs_files = [str(p) for p in list(base.glob("*")) if p.is_file()]
         if len(configs_files) > 0:
             config_file = configs_files[0]
             print(f"Running {config_file}")
@@ -28,5 +29,6 @@ if __name__ == '__main__':
                 # move to error
                 os.rename(config_file, (base / 'error' / Path(config_file).name))
         else:
-            break
+            sleep(2)
+            print("waiting for configs")
    
