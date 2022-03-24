@@ -164,7 +164,7 @@ class AttentionSegmentationConfig(Config):
                             help='Set to use apply linear proj to attention hidden dim before MSA.')
         parser.add_argument('--use-self-attention', action='store_true',
                             help='Set to consider central patch with respect to neighbour patches in MSA.')
-        parser.add_argument('--use_transformer', action='store_true',
+        parser.add_argument('--use-transformer', action='store_true',
                             help='Set to use transformer encoder instead of MSA.')
         parser.add_argument('--log-details', action='store_true',
                             help='Set to log computation-intense metrics.')
