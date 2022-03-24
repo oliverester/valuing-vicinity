@@ -103,8 +103,8 @@ class Memory():
         self._reset()
         
         print("Filling memory..")
-        is_model_training = model.training
-        model.eval()
+        #is_model_training = model.training
+        #model.eval()
         
         # no matter what, enforce all patch mode to create complete memory
         with data_loader.dataset.all_patch_mode():
@@ -124,8 +124,8 @@ class Memory():
                 'memory is not completely built up.'
             assert self.n_p == int(torch.sum(self._mask).item()), 'memory is not completely built up'
         
-        if is_model_training:
-            model.train()
+        #if is_model_training:
+        #    model.train()
          
     @staticmethod
     def get_neighbour_memory_idxs(k: int,
