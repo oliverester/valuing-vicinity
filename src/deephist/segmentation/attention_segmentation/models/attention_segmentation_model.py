@@ -1,7 +1,6 @@
-from re import M
-import torch
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
+import torch
 from torch import nn
 
 from src.deephist.segmentation.attention_segmentation.models.multihead_attention_model import \
@@ -36,7 +35,7 @@ class AttentionSegmentationModel(torch.nn.Module):
         self.use_transformer = use_transformer
         self.kernel_size = k*2+1
         
-        if not self.use_central_attention and not use_transformer:
+        if not self.use_central_attention and not self.use_transformer:
             # mask central patch
             mask_central = torch.full((self.kernel_size,self.kernel_size), fill_value=1)
             mask_central[k,k] = 0
@@ -109,7 +108,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                     assert torch.sum(neighbour_masks).item() == torch.sum(torch.max(neighbour_embeddings, dim=-1)[0] != 0).item(), \
                         'all embeddings should have values'
                         
-                    if not self.use_central_attention:  
+                    if not self.use_central_attention and not self.use_transformer:  
                         # add empty central patches - happens when self-attention is turned off
                         neighbour_masks = neighbour_masks * self.mask_central
 

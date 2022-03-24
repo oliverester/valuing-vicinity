@@ -29,7 +29,7 @@ def visualize_tsne(embeddings: List[np.ndarray],
     if labels is None:
         labels = np.array([0]*len(embeddings))
 
-    tsne = TSNE(n_components=2).fit_transform(embeddings.view(-1,1024))
+    tsne = TSNE(n_components=2).fit_transform(embeddings) #.view(-1,1024))
 
     # extract x and y coordinates representing the positions of the images on T-SNE plot
     tx = tsne[:, 0]

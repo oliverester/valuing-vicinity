@@ -46,7 +46,7 @@ def log_step(phase,
         logits_gpu.detach()
         
         # statistics over attention scores:
-        if attention_gpu is not None:   
+        if attention_gpu is not None and not args.use_transformer:   
             attention = attention_gpu.detach()             
             # ensure central patch is not considered:
             k = (neighbour_masks.shape[-1]-1)//2

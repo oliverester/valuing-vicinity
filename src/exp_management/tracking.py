@@ -359,7 +359,7 @@ class Visualizer():
                                  model,
                                  epoch=None):
         
-        if model.msa.learn_pos_encoding:
+        if hasattr(model, 'msa') and model.msa.learn_pos_encoding:
             pos_h=model.msa.pos_h
             pos_w=model.msa.pos_w
             pos_h = pos_h.squeeze()

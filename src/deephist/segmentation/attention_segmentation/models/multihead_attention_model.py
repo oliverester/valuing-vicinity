@@ -34,7 +34,7 @@ class MultiheadAttention(nn.Module):
         self.use_pos_encoding = use_pos_encoding
         self.learn_pos_encoding = learn_pos_encoding
         
-        assert(use_pos_encoding + learn_pos_encoding < 1), "Either use (sin.) position encoding or learn (2d) embeddings." 
+        assert(use_pos_encoding + learn_pos_encoding <= 1), "Either use (sin.) position encoding or learn (2d) embeddings." 
         
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads

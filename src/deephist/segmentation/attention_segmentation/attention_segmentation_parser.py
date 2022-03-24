@@ -146,14 +146,18 @@ class AttentionSegmentationConfig(Config):
                             help='Select number of wsis for in-training evaluation.')
         parser.add_argument('--attention-on', action='store_true',
                             help='Set to activate attention memory mechanism. Else, "normal" segmentation is performed.')
-        parser.add_argument('--embedding-dim', default=None, type=int,
+        parser.add_argument('--embedding-dim', default=1024, type=int,
                             help='Select number of embedding dim. If None, memory is deactivated.')
         parser.add_argument('--k-neighbours', default=None, type=int,
                             help='Select number of neighbouring patches to attend to.')
         parser.add_argument('--num-attention-heads', default=None, type=int,
                             help='Select number of attention heads for MSA.')
-        parser.add_argument('--attention-hidden-dim', default=None, type=int,
+        parser.add_argument('--attention-hidden-dim', default=1024, type=int,
                             help='Select number of MSA hidden dimension (after linear proj.).')
+        parser.add_argument('--mlp-hidden-dim', default=2048, type=int,
+                            help='Select number of transformer block mlp hidden dimension .')
+        parser.add_argument('--transformer-depth', default=4, type=int,
+                            help='Select transformer depth (layers).')
         parser.add_argument('--use-ln', action='store_true',
                             help='Set to use layer normalization at MSA beginning.')
         parser.add_argument('--use-pos-encoding', action='store_true',

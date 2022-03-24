@@ -2,13 +2,9 @@
 Adjusted from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/vit.py
 '''
 
-
-from re import X
 import torch
 from torch import nn
-
-from einops import rearrange, repeat
-from einops.layers.torch import Rearrange
+from einops import rearrange
 
 from src.deephist.segmentation.attention_segmentation.models.position_encoding import PositionalEncoding
 
