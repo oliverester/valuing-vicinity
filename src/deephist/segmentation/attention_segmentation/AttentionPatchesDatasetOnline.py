@@ -17,7 +17,7 @@ from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 
 
-class AttentionPatchesDataset(Dataset):
+class AttentionPatchesDatasetOnline(Dataset):
     """
     CustomPatchesDataset is a pytorch dataset to work with WSI patches
     provides by eihter WSI objects or WSIDatset objects.
@@ -73,19 +73,16 @@ class AttentionPatchesDataset(Dataset):
         else:
             patch = self.wsi_dataset.get_patches()[idx]
         
-        # get patch idx in memory
-        patch_idx = Memory.get_memory_idx(patch=patch,
-                                          k=self.wsi_dataset.k_neighbours)
-        # get k-neighbourhood patch idxs in memory
-        patch_neighbour_idxs = Memory.get_neighbour_memory_idxs(k=self.wsi_dataset.k_neighbours,
-                                                                patch=patch)
-        
+        # get neighbour imgs
+        neighbour_ptcs, neighbour_mask = patch.get_k_neighbours()
+        neighbour_ptcs, neighbour_mask = neighbour_ptcs.flatten(), torch.tensor(neighbour_mask)
         patch_img, label = patch()
       
         if self.transform is not None:
             patch_img = self.transform(patch_img)
+            neighbour_imgs = torch.stack([self.transform(n_img()[0]) if n_img is not None else torch.zeros(patch_img.shape) for n_img in neighbour_ptcs])
 
-        return patch_img, label, patch_idx, patch_neighbour_idxs
+        return patch_img, label, neighbour_imgs, neighbour_mask
     
     @contextmanager
     def all_patch_mode(self):

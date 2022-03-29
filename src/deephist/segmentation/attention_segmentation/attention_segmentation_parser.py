@@ -126,8 +126,6 @@ class AttentionSegmentationConfig(Config):
                             help='set to apply normalization in pytorch transformation')
         parser.add_argument('--freeze', action='store_true',
                             help='select to freeze all weights but the fc ones')
-        parser.add_argument('--dropout', action='store_true',
-                            help='select to add dropout to fc')
         parser.add_argument('--reload-model-folder', default=None, type=str,
                             help='Provide model log folder to reload a trained model. Training step is ignored then.')
         parser.add_argument('--evaluate-every', default=1, type=int,
@@ -158,6 +156,10 @@ class AttentionSegmentationConfig(Config):
                             help='Select number of transformer block mlp hidden dimension .')
         parser.add_argument('--transformer-depth', default=4, type=int,
                             help='Select transformer depth (layers).')
+        parser.add_argument('--emb-dropout', type=float, default=0,
+                            help='Select transformer embedding dropout')
+        parser.add_argument('--dropout', type=float, default=0,
+                            help='Select transformer dropout (mlp & att)')
         parser.add_argument('--use-ln', action='store_true',
                             help='Set to use layer normalization at MSA beginning.')
         parser.add_argument('--use-pos-encoding', action='store_true',
@@ -170,6 +172,8 @@ class AttentionSegmentationConfig(Config):
                             help='Set to consider central patch with respect to neighbour patches in MSA.')
         parser.add_argument('--use-transformer', action='store_true',
                             help='Set to use transformer encoder instead of MSA.')
+        parser.add_argument('--online', action='store_true',
+                            help='Set to create neighbour embs in real time (instead of memory).')
         parser.add_argument('--log-details', action='store_true',
                             help='Set to log computation-intense metrics.')
         parser.add_argument('--memory-to-gpu', action='store_true',

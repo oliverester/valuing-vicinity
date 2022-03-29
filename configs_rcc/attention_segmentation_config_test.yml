@@ -1,8 +1,8 @@
 arch: unet
 encoder: resnet50
-gpu: 5
-workers: 0
-batch-size: 32
+gpu: 2
+workers: 16
+batch-size: 4
 val-batch-size: 256
 test-batch-size: 200
 epochs: 2
@@ -43,4 +43,5 @@ seed: 13
 performance-metric: loss
 attention-on: true
 multiscale-on: false
-use-transformer: true
+use-transformer: false
+online: true

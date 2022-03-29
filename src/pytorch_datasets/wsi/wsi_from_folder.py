@@ -66,6 +66,8 @@ class WSIFromFolder():
         self.embedding_dim = self.wsi_dataset.embedding_dim
         self.k_neighbours = self.wsi_dataset.k_neighbours
         
+        self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
+        
         self.thumbnail = self._load_thumbnail()
         self._prediction = None
     

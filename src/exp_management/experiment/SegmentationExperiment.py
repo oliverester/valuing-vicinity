@@ -11,8 +11,10 @@ import torch
 from torchvision import transforms
 
 from src.deephist.segmentation.attention_segmentation.AttentionPatchesDataset import AttentionPatchesDataset
+from src.deephist.segmentation.attention_segmentation.AttentionPatchesDatasetOnline import AttentionPatchesDatasetOnline
 from src.deephist.segmentation.attention_segmentation.models.attention_segmentation_model import AttentionSegmentationModel
 from src.deephist.segmentation.attention_segmentation.train_epoch import train_epoch
+from src.deephist.segmentation.attention_segmentation.train_epoch_online import train_epoch_online
 from src.deephist.segmentation.attention_segmentation.attention_segmentation_parser import AttentionSegmentationConfig
 import src.deephist.segmentation.semantic_segmentation.train_epoch as train_semantic
 import src.deephist.segmentation.multiscale_segmentation.train_epoch as train_multiscale
@@ -52,8 +54,12 @@ class SegmentationExperiment(MLExperiment):
         assert(not(args.attention_on and args.multiscale_on)) , 'Either attention mode or multiscale mode can be activated.'
         
         if args.attention_on:
-            dataset_type = AttentionPatchesDataset
-            collate_fn = self.collate_neighbour_patches
+            if not args.online:
+                dataset_type = AttentionPatchesDataset
+                collate_fn = self.collate_neighbour_patches
+            else:
+                dataset_type = AttentionPatchesDatasetOnline
+                collate_fn = self.collate_neighbour_patches_online
         elif args.multiscale_on:
             dataset_type = MultiscalePatchesDataset
             collate_fn = self.collate_multiscale_patches            
@@ -175,7 +181,10 @@ class SegmentationExperiment(MLExperiment):
                                                     attention_on=self.args.attention_on,
                                                     use_transformer=self.args.use_transformer,
                                                     transformer_depth=self.args.transformer_depth,
-                                                    mlp_hidden_dim=self.args.mlp_hidden_dim
+                                                    mlp_hidden_dim=self.args.mlp_hidden_dim,
+                                                    emb_dropout=self.args.emb_dropout,
+                                                    dropout=self.args.dropout,
+                                                    online=self.args.online
                                                     )
     
     def run_train_vali_epoch(self,
@@ -190,15 +199,26 @@ class SegmentationExperiment(MLExperiment):
                              **kwargs):
         
         if self.args.attention_on:
-            new_performance = train_epoch(exp=self,
-                                          holdout_set=holdout_set,
-                                          model=model,
-                                          criterion=criterion,
-                                          optimizer=optimizer,
-                                          label_handler=label_handler,
-                                          epoch=epoch,
-                                          args=args,
-                                          writer=writer)
+            if not self.args.online:
+                new_performance = train_epoch(exp=self,
+                                            holdout_set=holdout_set,
+                                            model=model,
+                                            criterion=criterion,
+                                            optimizer=optimizer,
+                                            label_handler=label_handler,
+                                            epoch=epoch,
+                                            args=args,
+                                            writer=writer)
+            else:
+                new_performance = train_epoch_online(exp=self,
+                                                     holdout_set=holdout_set,
+                                                     model=model,
+                                                     criterion=criterion,
+                                                     optimizer=optimizer,
+                                                     label_handler=label_handler,
+                                                     epoch=epoch,
+                                                     args=args,
+                                                     writer=writer)
         elif self.args.multiscale_on:
             new_performance = train_multiscale.train_epoch(exp=self,
                                                            holdout_set=holdout_set,
@@ -237,8 +257,12 @@ class SegmentationExperiment(MLExperiment):
         """
         
         if self.args.attention_on: 
-            from src.deephist.segmentation.attention_segmentation.attention_inference import do_inference
-            inference_fun = do_inference
+            if not self.args.online:
+                from src.deephist.segmentation.attention_segmentation.attention_inference import do_inference
+                inference_fun = do_inference
+            else:
+                from src.deephist.segmentation.attention_segmentation.attention_online_inference import do_inference
+                inference_fun = do_inference
         elif self.args.multiscale_on:
             from src.deephist.segmentation.multiscale_segmentation.multiscale_inference import do_inference
             inference_fun = do_inference
@@ -718,6 +742,9 @@ class SegmentationExperiment(MLExperiment):
     def collate_neighbour_patches(self, batch):
         return NeighbourBatch(batch)
     
+    def collate_neighbour_patches_online(self, batch):
+        return NeighbourBatchOnline(batch)
+    
     def collate_multiscale_patches(self, batch):
         return MultiscaleBatch(batch)
         
@@ -736,6 +763,21 @@ class NeighbourBatch:
         self.patch_idx = self.patch_idx.pin_memory()
         self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
         return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
+    
+class NeighbourBatchOnline:
+    def __init__(self, batch) -> None:    
+        self.img = torch.stack([item[0] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
+        self.neighbour_img = torch.stack([item[2] for item in batch]) 
+        self.neighbour_mask = torch.stack([item[3] for item in batch])
+        
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        self.neighbour_img = self.neighbour_img.pin_memory()
+        self.neighbour_mask = self.neighbour_mask.pin_memory()
+        return self.img, self.mask, self.neighbour_img, self.neighbour_mask
     
 class MultiscaleBatch:
     def __init__(self, batch) -> None:    

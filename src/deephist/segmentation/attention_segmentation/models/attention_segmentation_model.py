@@ -21,14 +21,18 @@ class AttentionSegmentationModel(torch.nn.Module):
                  mlp_hidden_dim: int = 2048,
                  num_attention_heads: int = 8,
                  transformer_depth: int = 8,
+                 emb_dropout: float = 0.,
+                 dropout: float = 0.,
                  use_ln: bool = False,
                  use_pos_encoding: bool = False,
                  use_central_attention: bool = False,
                  learn_pos_encoding: bool = False,
                  attention_on: bool = True,
-                 use_transformer: bool = False) -> None:
+                 use_transformer: bool = False,
+                 online: bool = False) -> None:
         super().__init__()
         
+        self.online = online
         self.attention_on = attention_on
         self.use_central_attention = use_central_attention
         self.attention_input_dim = attention_input_dim
@@ -62,7 +66,10 @@ class AttentionSegmentationModel(torch.nn.Module):
                                        depth=transformer_depth,
                                        heads=num_attention_heads,
                                        mlp_dim=mlp_hidden_dim,
-                                       hidde_dim=attention_hidden_dim
+                                       hidde_dim=attention_hidden_dim,
+                                       emb_dropout=emb_dropout,
+                                       dropout=dropout,
+                                       use_pos_encoding=use_pos_encoding,
                                        )
             else: # use MHA
                 self.msa = MultiheadAttention(input_dim=attention_input_dim, 
@@ -77,6 +84,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                 images, 
                 neighbour_masks=None,
                 neighbour_embeddings=None,
+                neighbour_imgs=None,
                 return_attention=False,
                 return_embeddings=False):
         """Sequentially pass `x` through model`s encoder, decoder and heads"""
@@ -98,16 +106,27 @@ class AttentionSegmentationModel(torch.nn.Module):
             if return_embeddings:
                 return embeddings
             else:
-                tmp_batch_size = embeddings.shape[0]
+                tmp_batch_size, ch, x, y = images.shape
+                # online: get neighbour embeddings (with grads) concurrently
+                if self.online:
 
-                embeddings = torch.unsqueeze(embeddings, 1)
+                    neighbour_features = self.model.encoder(neighbour_imgs.view(-1,ch,x,y))
+                    encoder_map = neighbour_features[-1]
+                    # f_emb:
+                    # pool feature maps + linear proj to patch emb
+                    pooled = self.pooling(encoder_map)
+                    neighbour_embeddings = self.lin_proj(pooled.flatten(1))
+                    neighbour_embeddings = neighbour_embeddings.view(tmp_batch_size,self.kernel_size*self.kernel_size,-1)
                 
+                embeddings = torch.unsqueeze(embeddings, 1)
+
                 # attend neighbour embeddings if exist:
                 if neighbour_embeddings is not None:
-                    # sanity check: all embeddings should have values                    
-                    assert torch.sum(neighbour_masks).item() == torch.sum(torch.max(neighbour_embeddings, dim=-1)[0] != 0).item(), \
-                        'all embeddings should have values'
-                        
+                    # sanity check: all embeddings should have values  
+                    if not self.online:                  
+                        assert torch.sum(neighbour_masks).item() == torch.sum(torch.max(neighbour_embeddings, dim=-1)[0] != 0).item(), \
+                            'all embeddings should have values'
+                            
                     if not self.use_central_attention and not self.use_transformer:  
                         # add empty central patches - happens when self-attention is turned off
                         neighbour_masks = neighbour_masks * self.mask_central

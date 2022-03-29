@@ -50,7 +50,7 @@ class Memory():
         if not self._memory.is_cuda:
             embeddings = embeddings.detach().cpu()
         
-          # batch update of embeddings     
+        # batch update of embeddings     
         self._memory[patches_idx[0], # wsi idx
                      patches_idx[1], # x idx
                      patches_idx[2], # y idx
