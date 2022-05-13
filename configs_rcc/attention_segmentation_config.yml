@@ -2,8 +2,8 @@ arch: deeplabv3
 encoder: resnet50
 gpu: 2
 workers: 16
-batch-size: 4
-val-batch-size: 32
+batch-size: 2
+val-batch-size: 2
 epochs: 200
 test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d16_test
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train

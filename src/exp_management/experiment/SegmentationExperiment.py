@@ -186,7 +186,7 @@ class SegmentationExperiment(MLExperiment):
                                                     dropout=self.args.dropout,
                                                     online=self.args.online
                                                     )
-    
+        
     def run_train_vali_epoch(self,
                              holdout_set,
                              model,

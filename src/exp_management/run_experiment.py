@@ -112,7 +112,7 @@ def run_holdout(exp: Experiment,
     """
     
     writer = SummaryWriter(exp.args.log_path)
-    
+        
     if exp.args.reload_model_folder is None:
         train_holdout_model(holdout_set=holdout_set,
                             exp=exp,
@@ -189,6 +189,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
     
     #torch.cuda.set_device(exp.args.gpu)
     model = exp.model
+    
     model = model.cuda(exp.args.gpu)
 
     print(model) # print model after SyncBatchNorm  

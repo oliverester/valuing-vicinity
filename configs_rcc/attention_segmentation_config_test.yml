@@ -1,10 +1,10 @@
 arch: unet
 encoder: resnet50
 gpu: 2
-workers: 16
+workers: 8
 batch-size: 4
-val-batch-size: 256
-test-batch-size: 200
+val-batch-size: 4
+test-batch-size: 4
 epochs: 2
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d128_debug
 test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d128_test 

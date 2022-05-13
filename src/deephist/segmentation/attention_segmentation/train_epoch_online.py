@@ -50,11 +50,9 @@ def train_epoch_online(exp: Experiment,
         if phase == 'train':
             data_loader = holdout_set.train_loader
             # for fast embedding inference
-            big_data_loader = holdout_set.big_train_loader
             wsi_dataset = holdout_set.train_wsi_dataset
         else:
             data_loader = holdout_set.vali_loader
-            big_data_loader = data_loader
             wsi_dataset= holdout_set.vali_wsi_dataset
 
         
@@ -91,7 +89,6 @@ def train_epoch_online(exp: Experiment,
              
     
         for images, labels, neighbour_imgs, neighbour_mask in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
-            
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)

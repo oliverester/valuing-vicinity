@@ -109,8 +109,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                 tmp_batch_size, ch, x, y = images.shape
                 # online: get neighbour embeddings (with grads) concurrently
                 if self.online:
-
-                    neighbour_features = self.model.encoder(neighbour_imgs.view(-1,ch,x,y))
+                    with torch.no_grad():
+                        neighbour_features = self.model.encoder(neighbour_imgs.view(-1,ch,x,y))
                     encoder_map = neighbour_features[-1]
                     # f_emb:
                     # pool feature maps + linear proj to patch emb
