@@ -11,6 +11,8 @@ class Memory():
     
     def __init__(self, n_x, n_y, n_w, n_p, D, k) -> None:
         
+        self.metadata = dict()
+        
         self.n_x = n_x
         self.n_y = n_y
         self.n_w = n_w
@@ -31,6 +33,14 @@ class Memory():
         print(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024
         print(f"Embedding memory size: {str(round(size_in_gb, 2))} GB")
+        
+        self.metadata['memory_size_in_gb'] = size_in_gb
+        self.metadata['n_x'] = self.n_x
+        self.metadata['n_y'] = self.n_y
+        self.metadata['n_w'] = self.n_w
+        self.metadata['D'] = self.D
+        self.metadata['k'] = self.k
+
         self._memory = memory
         self._mask = mask
         

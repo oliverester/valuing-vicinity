@@ -192,6 +192,7 @@ class WSIDatasetFolder:
                                            n_p=n_patches,
                                            D=self.embedding_dim,
                                            k=self.k_neighbours)
+            self.metadata['memory'] = self.embedding_memory.metadata
 
     def set_patch_label_type(self, patch_label_type: str):
         if patch_label_type == 'img':

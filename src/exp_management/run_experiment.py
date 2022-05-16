@@ -132,7 +132,7 @@ def run_holdout(exp: Experiment,
     """
     
     #log holdout details to experiment
-    exp.exp_log(holdout_set.metadata)
+    exp.exp_log(holdout_set = holdout_set.metadata)
     
     writer = SummaryWriter(exp.args.log_path)
         
