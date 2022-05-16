@@ -92,6 +92,7 @@ class SegmentationExperiment(MLExperiment):
                                      embedding_dim=args.embedding_dim,
                                      k_neighbours=args.k_neighbours,
                                      multiscale_on=args.multiscale_on,
+                                     sample_size=args.sample_size,
                                      exp=self)
 
         self.args.number_of_classes = data_provider.number_classes

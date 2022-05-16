@@ -1,13 +1,14 @@
 arch: unet
 encoder: resnet50
-gpu: 2
+gpu: 0
 workers: 8
 batch-size: 4
 val-batch-size: 4
 test-batch-size: 4
 epochs: 2
+nfold: 2
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d128_debug
-test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d128_test 
+#test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d128_test 
 #reload-model-folder: /homes/oester/repositories/prae/logdir_test/attention_segmentation-2022-02-08_15_07_53
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask

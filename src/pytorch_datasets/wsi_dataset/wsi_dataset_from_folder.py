@@ -49,6 +49,7 @@ class WSIDatasetFolder:
                  embedding_dim = None,
                  k_neighbours = None,
                  multiscale_on: bool = False,
+                 sample_size: int = None,
                  fold=0,
                  exp = None
                  ) -> None:
@@ -99,6 +100,7 @@ class WSIDatasetFolder:
             image_label_handler (LabelHandler): LabelHandler manages image (wsi) label mapping.
                 To ensure labels are aligned over muliple WSI Datasets,
                 create a LabelHandler outside and pass it to all WSI Datasets.
+            sample_size (int): Number of WSIs to random sample from the dataset. Default None.
             fold (int): Set the fold this wsi dataset belongs to. Default 0.
             embedding_dim (int): Set the dimension of the patch embedding memory. 
                 If None, meomory is deactivated. Default to None. Optional.
@@ -144,6 +146,8 @@ class WSIDatasetFolder:
         
         # multi scale:
         self.multiscale_on = multiscale_on
+        
+        self.sample_size = sample_size
 
         self.fold = fold
         
@@ -313,6 +317,10 @@ class WSIDatasetFolder:
             else:
                 self.wsi_root_paths = [d for d in self.root_path.iterdir() if d.is_dir()]
 
+        if self.sample_size is not None:
+            self.wsi_root_paths = random.sample(population=self.wsi_root_paths,
+                                                k=self.sample_size)
+            
         for idx, wsi_root in enumerate(self.wsi_root_paths):
             print(f"Creating WSI object for {wsi_root.name}")
             wsi_label = wsi_root.parts[-2] if self.root_contains_wsi_label else -1

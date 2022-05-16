@@ -1,4 +1,5 @@
 import json
+import math
 import random
 from pathlib import Path
 from typing import List, Tuple, Union
@@ -48,10 +49,10 @@ class DataProvider():
                  embedding_dim: int = None,
                  k_neighbours: int = None,
                  multiscale_on: bool = False,
+                 sample_size: int = None
                  ):
 
         # avoid holdout and cv at the same time
-        assert(not (nfold is not None and (vali_split is not None and mc_runs is None))), 'either validation split or cross validation'
         assert(not (nfold is not None and mc_runs is not None)), 'either cross validation or monte carlo'
         assert(patch_label_type in ['patch', 'image', 'mask', 'distribution'])
         if exclude_classes is not None:
@@ -110,6 +111,7 @@ class DataProvider():
                 self.prehisto_config = None
                 self.exp.args.thumbnail_correction_ratio = 1
 
+        self.sample_size = sample_size
         self.train_data = train_data
         self.test_data = test_data
         self.val_ratio = vali_split
@@ -155,7 +157,6 @@ class DataProvider():
             self.holdout_set = self._set_holdout_set()
             self.train_set = self._set_train_set()
             self.cv_set = self._set_cv_set()
-        self.test_wsi_dataset = self._set_test_wsis()
 
         
         if patch_label_type in ['patch', 'distribution']:
@@ -194,13 +195,16 @@ class DataProvider():
                                                 embedding_dim=self.embedding_dim,
                                                 k_neighbours=self.k_neighbours,
                                                 multiscale_on=self.multiscale_on,
+                                                sample_size=self.sample_size,
                                                 exp=self.exp)
+        
 
     def _set_cv_set(self):
         if self.nfold is not None:
             return CvSet(wsi_dataset=self.wsi_dataset,
                          data_provider=self,
-                         nfold=self.nfold)
+                         nfold=self.nfold,
+                         val_ratio=self.val_ratio)
         elif self.mc_runs is not None and self.val_ratio is not None:
             return McSet(wsi_dataset=self.wsi_dataset,
                          data_provider=self,
@@ -217,9 +221,11 @@ class DataProvider():
                
             train_wsi_dataset, vali_wsi_dataset = self.wsi_dataset.split_wsi_dataset_by_ratios(split_ratios= [1-self.val_ratio,
                                                                                                               self.val_ratio])
-
+            test_wsi_dataset = self._set_test_wsis()
+            
             holdout_set =  HoldoutSet(train_wsi_dataset=train_wsi_dataset,
                                       vali_wsi_dataset=vali_wsi_dataset,
+                                      test_wsi_dataset=test_wsi_dataset,
                                       data_provider=self)
 
             return holdout_set
@@ -338,39 +344,45 @@ class HoldoutSet():
                  train_wsi_dataset: WSIDatasetFolder,
                  vali_wsi_dataset: WSIDatasetFolder,
                  data_provider: DataProvider,
+                 test_wsi_dataset: WSIDatasetFolder = None,
                  fold: int = None
                 ):
-
+        self.metadata = dict()
+        
         self.train_wsi_dataset = train_wsi_dataset
         self.vali_wsi_dataset = vali_wsi_dataset
+        self.test_wsi_dataset = test_wsi_dataset
         self.data_provider = data_provider
         self.fold = fold
         
         if self.data_provider.embedding_dim is not None:
             self.train_wsi_dataset.initialize_memory()
             self.vali_wsi_dataset.initialize_memory()
+            if test_wsi_dataset is not None:
+                self.test_wsi_dataset.initialize_memory()
 
         self._create_loader()
 
 
     def _create_loader(self):
         # log all metadata of wsi dataset
-        self.data_provider.exp.exp_log(train_wsi_dataset = self.train_wsi_dataset.metadata)
+        self.metadata['train_wsi_dataset'] = self.train_wsi_dataset.metadata
 
         self.train_torch_dataset = self.data_provider.dataset_type(
             wsi_dataset=self.train_wsi_dataset,
             transform=self.data_provider.train_aug_transform)
 
-        self.data_provider.exp.exp_log(vali_wsi_dataset = self.vali_wsi_dataset.metadata)
+        self.metadata['vali_wsi_dataset'] = self.vali_wsi_dataset.metadata
+        
         self.vali_torch_dataset = self.data_provider.dataset_type(
             wsi_dataset=self.vali_wsi_dataset,
             transform=self.data_provider.vali_aug_transform)
-
+        
         print(f"Train Data set length {self.train_wsi_dataset.metadata['n_drawn_patches']}"
             f" patches from {self.train_wsi_dataset.metadata['n_wsis']} wsis")
         print(f"Vali Data set length {self.vali_wsi_dataset.metadata['n_drawn_patches']}"
             f" patches from {self.vali_wsi_dataset.metadata['n_wsis']} wsis")
-
+      
         self.train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
             batch_size=int(self.data_provider.batch_size),
@@ -380,7 +392,7 @@ class HoldoutSet():
             drop_last=False,
             collate_fn=self.data_provider.collate_fn,
             # does not work for parallel experiemtns (folds..)
-            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            persistent_workers=True
         )
 
         self.big_train_loader = torch.utils.data.DataLoader(
@@ -390,7 +402,7 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
-            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            persistent_workers=True
         )
 
         self.vali_loader = torch.utils.data.DataLoader(
@@ -400,8 +412,28 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
-            #persistent_workers=True if self.data_provider.workers > 0 and self.data_provider.nfold is None else False
+            persistent_workers=True
         )
+        
+        if self.test_wsi_dataset is not None:
+
+            self.metadata["test_wsi_dataset"] = self.test_wsi_dataset.metadata
+            
+            self.test_torch_dataset = self.data_provider.dataset_type(
+                wsi_dataset=self.test_wsi_dataset,
+                transform=self.data_provider.vali_aug_transform)
+            print(f"Test Data set length {self.test_wsi_dataset.metadata['n_drawn_patches']}"
+            f" patches from {self.test_wsi_dataset.metadata['n_wsis']} wsis")
+
+            self.test_loader = torch.utils.data.DataLoader(
+                self.test_torch_dataset,
+                batch_size=int(self.data_provider.test_batch_size),
+                shuffle=True,
+                num_workers=self.data_provider.workers,
+                pin_memory=True,
+                collate_fn=self.data_provider.collate_fn,
+                persistent_workers=True
+            )
 
 class McSet():
     """
@@ -459,8 +491,10 @@ class CvSet():
     def __init__(self,
                  data_provider: DataProvider,
                  wsi_dataset: WSIDatasetFolder,
-                 nfold: int = 3):
+                 nfold: int = 3,
+                 val_ratio: float = 0.1):
         self.nfold = nfold
+        self.val_ratio = val_ratio
         self.wsi_dataset= wsi_dataset
         self.data_provider = data_provider
         self.holdout_sets = self._create_kfold_set()
@@ -491,42 +525,54 @@ class CvSet():
             label_splits[lbl] = list(split_points)
 
         fold_splits = dict()
-        all_val_wsis = []
+        
+        all_test_wsis = []
+        
         for fold in range(self.nfold):
             print(f"CV-Fold {fold}")
             
             train_wsis = []
             val_wsis = []
+            test_wsis = []
             fold_splits[fold] = dict()
             fold_splits[fold]['train'] = dict()
-            fold_splits[fold]['vali'] = dict()
+            fold_splits[fold]['val'] = dict()
+            fold_splits[fold]['test'] = dict()
 
             for lbl, lbl_split in label_splits.items():
-                # add val indices per lbl
-                lbl_val_wsis = label_wsis[lbl][lbl_split[fold][0]:lbl_split[fold][1]]
-                val_wsis.extend(lbl_val_wsis)
+                # add test indices per lbl
+                lbl_test_wsis = label_wsis[lbl][lbl_split[fold][0]:lbl_split[fold][1]]
+                test_wsis.extend(lbl_test_wsis)
                 # all other incides per lbl go into the train set
                 lbl_train_wsis = [lbl_idx for idx, lbl_idx in enumerate(label_wsis[lbl])
                                    if idx not in range(lbl_split[fold][0],lbl_split[fold][1])]
-                train_wsis.extend(lbl_train_wsis)
+                
+                # now split a validation set using val-split:
+                lbl_val_wsis = random.sample(population=lbl_train_wsis, k = math.ceil(len(lbl_train_wsis) * self.val_ratio))
+                
+                train_wsis.extend([wsi for wsi in lbl_train_wsis if wsi not in lbl_val_wsis])
+                val_wsis.extend(lbl_val_wsis)
 
                 fold_splits[fold]['train'][lbl] = [wsi.name for wsi in lbl_train_wsis]
-                fold_splits[fold]['vali'][lbl] = [wsi.name for wsi in lbl_val_wsis]
+                fold_splits[fold]['val'][lbl] = [wsi.name for wsi in lbl_val_wsis]
+                fold_splits[fold]['test'][lbl] = [wsi.name for wsi in lbl_test_wsis]
             
             folds.append(HoldoutSet(
                 train_wsi_dataset=self.wsi_dataset.get_wsi_dataset_subset(train_wsis),
+                test_wsi_dataset=self.wsi_dataset.get_wsi_dataset_subset(test_wsis),
                 vali_wsi_dataset=self.wsi_dataset.get_wsi_dataset_subset(val_wsis),
                 data_provider= self.data_provider,
                 fold = fold))
 
             # collect val incides to assert uniqueness later
-            all_val_wsis.extend(val_wsis)
-            # no val data in test data
+            all_test_wsis.extend(test_wsis)
+            # no val/test data in train data
             assert(all(val_wsi not in train_wsis for val_wsi in val_wsis))
+            assert(all(test_wsi not in train_wsis for test_wsi in test_wsis))
 
-        # every wsi only once in val set
-        assert(len(all_val_wsis) == len(set(all_val_wsis)))
-        assert(len(all_val_wsis) == len(wsi_labels))
+        # every wsi only once in test set
+        assert(len(all_test_wsis) == len(set(all_test_wsis)))
+        assert(len(all_test_wsis) == len(wsi_labels))
 
         self.data_provider.exp.exp_log(splitting=fold_splits)
         return folds

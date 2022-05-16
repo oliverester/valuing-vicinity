@@ -224,7 +224,8 @@ class WSIFromFolder():
             x_coord, y_coord =  patch.get_coordinates()
             patch_map[x_coord, y_coord] = patch
 
-        patch_map = np.pad(patch_map, pad_size, mode='empty')
+        if pad_size is not None:
+            patch_map = np.pad(patch_map, pad_size, mode='empty')
         
         return patch_map, pad_size
     
@@ -439,9 +440,10 @@ class WSIFromFolder():
         tmp_patch_mode = self._all_patch_mode
         self._all_patch_mode = True
         #import: set each wsi index to 0 - dataloader holds one WSI only in each interation
-        self.initialize_memory()
-        if self.k_neighbours is not None:
-            self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
+        if self.wsi_dataset.attention_on:
+            self.initialize_memory()
+            if self.k_neighbours is not None:
+                self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
         yield(self)
         self.idx = tmp_idx
         self._all_patch_mode = tmp_patch_mode

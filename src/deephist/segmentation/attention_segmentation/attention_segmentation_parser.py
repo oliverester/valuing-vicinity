@@ -59,7 +59,7 @@ class AttentionSegmentationConfig(Config):
                             help='select to apply inference on val data.')
         parser.add_argument('--gpu', default=0, type=int,
                             help='GPU to use.')
-        parser.add_argument('--gpus', default=[0,1], nargs="*", type=int,
+        parser.add_argument('--gpus', default=None, nargs="*", type=int,
                             help='GPUs to use for cross-validation.')
         parser.add_argument('--patch-sampling', default=None,
                             choices=['over', 'under', 'overunder'],
@@ -183,7 +183,9 @@ class AttentionSegmentationConfig(Config):
                             help='Select a performance metric for early stopping and model selection.')
         parser.add_argument('--multiscale-on', action='store_true',
                             help='Set to run with multiscale model from Schmitz et al.')
-     
+        parser.add_argument('--sample-size', default=None, type=int,
+                            help='Select a WSI sample size (e.g. for debugging).')
+        
 
         args, unknown = parser.parse_known_args()
 

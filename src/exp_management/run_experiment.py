@@ -2,6 +2,7 @@
 Run supervised ML-experiment
 """
 
+import copy
 import math
 import multiprocessing as mp
 import os
@@ -45,7 +46,7 @@ def run_experiment(exp: Experiment):
                     exp=exp)
     else:
         run_kfold_model(cv_set=data_provider.cv_set,
-                          exp=exp)
+                        exp=exp)
 
 
 
@@ -57,19 +58,38 @@ def run_kfold_model(cv_set: CvSet,
         cv_set (CvSet): _description_
         exp (Experiment): _description_
     """
-    m = mp.Manager()
-    gpu_queue = m.Queue()
-    # initialize queue
-    for gpu_id in exp.args.gpus:
-        gpu_queue.put(gpu_id)
     
-    torch.multiprocessing.spawn(run_holdout_model_in_parallel, 
-                                args=(cv_set.holdout_sets, gpu_queue, exp), 
-                                nprocs=len(exp.args.gpus), 
-                                join=True, 
-                                daemon=False,
-                                start_method='spawn')
+    if exp.args.gpus is not None:
+        m = mp.Manager()
+        gpu_queue = m.Queue()
+        # initialize queue
+        for gpu_id in exp.args.gpus:
+            gpu_queue.put(gpu_id)
         
+        torch.multiprocessing.spawn(run_holdout_model_in_parallel, 
+                                    args=(cv_set.holdout_sets, gpu_queue, exp), 
+                                    nprocs=len(exp.args.gpus), 
+                                    join=True, 
+                                    daemon=False,
+                                    start_method='spawn')
+    else:
+        for fold_no in range(exp.args.nfold):
+            fold_exp = copy.deepcopy(exp)
+            holdout_set = cv_set.holdout_sets[fold_no]
+             
+            # settings for folds
+            fold_exp.set_fold(fold=holdout_set.fold)
+            
+            fold_exp.args.fold = holdout_set.fold
+            print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+            
+            run_holdout(holdout_set=holdout_set,
+                        exp=fold_exp)
+            
+            print(f"Finished fold {holdout_set.fold}")
+                
+        
+    # here: aggregate kfold results?
 
 def run_holdout_model_in_parallel(proc_idx: int,
                                   holdout_sets: List[HoldoutSet],
@@ -111,6 +131,9 @@ def run_holdout(exp: Experiment,
         holdout_set (HoldoutSet): _description_
     """
     
+    #log holdout details to experiment
+    exp.exp_log(holdout_set.metadata)
+    
     writer = SummaryWriter(exp.args.log_path)
         
     if exp.args.reload_model_folder is None:
@@ -123,7 +146,6 @@ def run_holdout(exp: Experiment,
         reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder
         
     eval_holdout_model(holdout_set=holdout_set,
-                       test_set=exp.data_provider.test_wsi_dataset,
                        exp=exp,
                        reload_from=reload_from,
                        writer=writer)
@@ -131,7 +153,6 @@ def run_holdout(exp: Experiment,
     writer.close()
     
 def eval_holdout_model(holdout_set: HoldoutSet,
-                       test_set: WSIDatasetFolder,
                        exp: Experiment,
                        reload_from: str,
                        writer: SummaryWriter):
@@ -140,7 +161,6 @@ def eval_holdout_model(holdout_set: HoldoutSet,
 
     Args:
         holdout_set (HoldoutSet): _description_
-        test_set (WSIDatasetFolder): _description_
         exp (Experiment): _description_
         reload_from (str): _description_
         writer (SummaryWriter): _description_
@@ -165,11 +185,11 @@ def eval_holdout_model(holdout_set: HoldoutSet,
                        tag='vali_best')
     
     # test model on testset
-    if exp.args.test_data is not None:
+    if holdout_set.test_wsi_dataset is not None:
         ## evaluate WSI
         evaluate_model(exp=exp,
                        model=model,
-                       wsis=test_set.wsis,
+                       wsis=holdout_set.test_wsi_dataset.wsis,
                        writer=writer,
                        tag='test',
                        save_to_folder=True,
