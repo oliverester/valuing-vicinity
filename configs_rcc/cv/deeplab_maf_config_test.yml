@@ -2,10 +2,10 @@ arch: deeplabv3
 encoder: resnet50
 gpu: 1
 workers: 8
-nfold: 5
+nfold: 2
 batch-size: 32
-val-batch-size: 256
-epochs: 200
+val-batch-size: 64
+epochs: 2
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask
@@ -38,3 +38,4 @@ memory-to-gpu: true
 seed: 13
 performance-metric: loss
 attention-on : true
+sample-size: 5

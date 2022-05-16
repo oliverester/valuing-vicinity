@@ -10,7 +10,6 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.deephist.segmentation.attention_segmentation.Memory import Memory
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder

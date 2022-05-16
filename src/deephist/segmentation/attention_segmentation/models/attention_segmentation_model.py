@@ -2,7 +2,9 @@ from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 import torch
 from torch import nn
+from tqdm import tqdm
 
+from src.deephist.segmentation.attention_segmentation.models.Memory import Memory
 from src.deephist.segmentation.attention_segmentation.models.multihead_attention_model import \
     MultiheadAttention
 from src.deephist.segmentation.attention_segmentation.models.transformer_model import ViT
@@ -48,7 +50,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                 self.register_buffer('mask_central', mask_central, persistent=False)
                     
         # Pytorch Segmentation Models: Baseline
-        self.model = create_model(arch=arch,
+        self.base_model = create_model(arch=arch,
                                   encoder_name=encoder_name,
                                   encoder_weights=encoder_weights,
                                   classes=number_of_classes)
@@ -57,11 +59,11 @@ class AttentionSegmentationModel(torch.nn.Module):
             # f_emb
             self.pooling = nn.AdaptiveAvgPool2d(1)
             # number of feature maps of encoder output: e.g. 2048 for U-net 5 layers 
-            self.lin_proj = nn.Linear(self.model.encoder._out_channels[-1], attention_input_dim)
+            self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
             
             # f_fuse
-            self.conv1x1 =  Conv2dReLU(self.model.encoder._out_channels[-1]+attention_input_dim, 
-                                       self.model.encoder._out_channels[-1], (1,1))
+            self.conv1x1 =  Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
+                                       self.base_model.encoder._out_channels[-1], (1,1))
             if self.use_transformer:
                 self.transformer = ViT(kernel_size=self.kernel_size,
                                        dim=attention_input_dim,
@@ -81,17 +83,96 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               use_ln=use_ln,
                                               use_pos_encoding=use_pos_encoding,
                                               learn_pos_encoding=learn_pos_encoding)
+                
+    def initialize_memory(self,
+                          is_eval=False, 
+                          **memory_params):
+        """Initializes (train/eval) Memory - if not exists yet.
+
+        Args:
+            is_eval (bool, optional): If true, creates eval Memory - else
+            train Memory. Later on, controlled by model.eval(). Defaults to False.
+        """
+        if not is_eval:
+            if not hasattr(self, 'train_memory'):
+                self.train_memory = Memory(**memory_params)
+                #super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
+        else:
+            if not hasattr(self, 'val_memory'):
+                self.val_memory = Memory(**memory_params)
+                #super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
+
+    def fill_memory(self, 
+                    data_loader: torch.utils.data.dataloader.DataLoader):
+        """Fill the memory by providing a dataloader that iterates the patches.
+
+        Args:
+            data_loader (torch.utils.data.dataloader.DataLoader): DataLoader
+        """
+        #reset memory first to ensure consistency
+        self.memory._reset()
+        
+        print("Filling memory..")
+        
+        # no matter what, enforce all patch mode to create complete memory
+        with data_loader.dataset.all_patch_mode():
+            with torch.no_grad():
+                for images, _, patches_idx, _ in tqdm(data_loader):
+                    images = images.cuda(next(self.parameters()).device, non_blocking=True)
+                        
+                    embeddings = self(images,
+                                      return_embeddings=True)
+                    self.memory.update_embeddings(patches_idx=patches_idx,
+                                           embeddings=embeddings)
             
+            assert data_loader.dataset.__len__() == torch.sum(torch.max(self.memory._memory, dim=-1)[0] != 0).item(), \
+                'memory is not completely built up.'
+            assert data_loader.dataset.__len__() == int(torch.sum(self.memory._mask).item()), \
+                'memory is not completely built up.'
+            if self.memory.n_p is not None:
+                assert self.memory.n_p == int(torch.sum(self.memory._mask).item()), 'memory is not completely built up'
+        
+    @property
+    def memory(self):
+        if self.training:
+            if not hasattr(self, 'train_memory'):
+                raise Exception("""Train Memory is not initialized yet. Please use the initialize_memory 
+                function of the AttentionSegmentationModel and specify the required dimensions""")
+            return self.train_memory
+        else:
+            if not hasattr(self, 'val_memory'):
+                raise Exception("""Train Memory is not initialized yet. Please use the initialize_memory 
+                function of the AttentionSegmentationModel and specify the required dimensions""")
+            return self.val_memory
+        
     def forward(self, 
-                images, 
-                neighbour_masks=None,
-                neighbour_embeddings=None,
-                neighbour_imgs=None,
-                return_attention=False,
-                return_embeddings=False):
-        """Sequentially pass `x` through model`s encoder, decoder and heads"""
+                images: torch.Tensor, 
+                neighbours_idx: torch.Tensor = None,
+                neighbour_imgs: torch.Tensor = None,
+                return_embeddings: bool = False):
+        """ 
+        Attention segmentation model:
+        If return_embeddings is True, only images must be provided and the model returns the compressed
+        patch representation after the encoder + pooling + lineanr projection.
+        
+        If return_emebeddings is False, neighbour_idx must be provided to point to the coordinates in the memory.
+        
+        If model is set to online, instead of neighbour_idx you have to provide neighbour_imgs, as the neighbourhood
+        patch embeddings will be derived, simultaneously.
+   
+        Args:
+            images (torch.Tensor, optional): B x C x h x w normalized image tensor.
+            neighbours_idx (torch.Tensor, optional): Indixes of neihgbourhood memory. Must be provided as long as return_embeddings is False. Defaults to None.
+            neighbour_imgs (torch.Tensor, optional): Must be provided if model is set to online. Defaults to None.
+            return_embeddings (bool, optional): Set to True to receive the patch embeddings, only. Defaults to False.
+
+        Returns:
+            [torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]: 
+            Either embeddings tensor - or tuple of prediction masks, attention maps and binary neighbour masks tensors
+        """
+                 
         # segmentation encoder
-        features = self.model.encoder(images)
+        features = self.base_model.encoder(images)
         
         if self.attention_on:
             # add context to deepest feature maps feat_l by attending neighbourhood embeddings
@@ -112,13 +193,16 @@ class AttentionSegmentationModel(torch.nn.Module):
                 # online: get neighbour embeddings (with grads) concurrently
                 if self.online:
                     with torch.no_grad():
-                        neighbour_features = self.model.encoder(neighbour_imgs.view(-1,ch,x,y))
+                        neighbour_features = self.base_model.encoder(neighbour_imgs.view(-1,ch,x,y))
                     encoder_map = neighbour_features[-1]
                     # f_emb:
                     # pool feature maps + linear proj to patch emb
                     pooled = self.pooling(encoder_map)
                     neighbour_embeddings = self.lin_proj(pooled.flatten(1))
                     neighbour_embeddings = neighbour_embeddings.view(tmp_batch_size,self.kernel_size*self.kernel_size,-1)
+                else: 
+                    # query memory for context information
+                    neighbour_embeddings, neighbour_masks = self.memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
                 
                 embeddings = torch.unsqueeze(embeddings, 1)
 
@@ -133,6 +217,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                         # add empty central patches - happens when self-attention is turned off
                         neighbour_masks = neighbour_masks * self.mask_central
 
+                    # from "2d" to "1d"
                     k_neighbour_masks = neighbour_masks.view(tmp_batch_size, 1, 1, -1)
                     neighbour_embeddings = neighbour_embeddings.view(tmp_batch_size, -1, self.attention_input_dim)
                 
@@ -162,14 +247,11 @@ class AttentionSegmentationModel(torch.nn.Module):
                 else:
                     attention = None
         # segmentation decoder    
-        decoder_output = self.model.decoder(*features)
+        decoder_output = self.base_model.decoder(*features)
         # segmentation head
-        masks = self.model.segmentation_head(decoder_output)
+        masks = self.base_model.segmentation_head(decoder_output)
 
-        if return_attention:
-            return masks, attention
-        else:
-            return masks
+        return masks, attention, neighbour_masks
 
            
             

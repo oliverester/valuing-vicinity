@@ -286,7 +286,7 @@ class DataProvider():
                                                        num_workers=self.workers,
                                                        pin_memory=True,
                                                        sampler=train_sampler,
-                                                       drop_last=False,
+                                                       drop_last=True,
                                                        collate_fn=self.collate_fn,
                                                        #persistent_workers=True if self.workers > 0 and self.nfold is None else False
                                                        )
@@ -389,16 +389,15 @@ class HoldoutSet():
             shuffle=True,
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            drop_last=False,
+            drop_last=True, # important in train_loader because of batch norm
             collate_fn=self.data_provider.collate_fn,
-            # does not work for parallel experiemtns (folds..)
             persistent_workers=True
         )
-
+        
+        # used to quickly fill memory with big batch size (no drop_last)
         self.big_train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
             batch_size=int(self.data_provider.val_batch_size),
-            shuffle=True,
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
@@ -408,7 +407,6 @@ class HoldoutSet():
         self.vali_loader = torch.utils.data.DataLoader(
             self.vali_torch_dataset,
             batch_size=int(self.data_provider.val_batch_size),
-            shuffle=True,
             num_workers=self.data_provider.workers,
             pin_memory=True,
             collate_fn=self.data_provider.collate_fn,
@@ -428,7 +426,6 @@ class HoldoutSet():
             self.test_loader = torch.utils.data.DataLoader(
                 self.test_torch_dataset,
                 batch_size=int(self.data_provider.test_batch_size),
-                shuffle=True,
                 num_workers=self.data_provider.workers,
                 pin_memory=True,
                 collate_fn=self.data_provider.collate_fn,

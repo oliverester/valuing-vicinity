@@ -32,6 +32,10 @@ def run_experiment(exp: Experiment):
     Args:
         config_path (str): path to config file
     """
+    
+    # only use half of cpu cores
+    torch.set_num_threads(int(os.cpu_count() * 0.5))
+    
     args = exp.args
     
     # prepare data
@@ -210,6 +214,11 @@ def train_holdout_model(holdout_set: HoldoutSet,
     #torch.cuda.set_device(exp.args.gpu)
     model = exp.model
     
+    # initialize patch memory for train & val set
+    if exp.args.attention_on:
+        model.initialize_memory(**holdout_set.train_wsi_dataset.memory_params)
+        model.initialize_memory(**holdout_set.vali_wsi_dataset.memory_params, is_eval=True)
+
     model = model.cuda(exp.args.gpu)
 
     print(model) # print model after SyncBatchNorm  
@@ -217,9 +226,6 @@ def train_holdout_model(holdout_set: HoldoutSet,
     
     if exp.args.gpu is not None:
         print("Use GPU: {} for training".format(exp.args.gpu))
-
-    # infer learning rate before changing batch size
-    init_lr = exp.args.lr
 
     # define loss function (criterion) and optimizer
     criterion = exp.get_criterion()
@@ -234,10 +240,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
     bad_epochs = 0 # counter for early stopping
 
     for epoch in range(exp.args.epochs):
-        if exp.args.adjust_lr is True:
-            scheduler.step()
-            #adjust_learning_rate(optimizer, init_lr, epoch, exp.args)
-
+      
         new_val_performance = exp.run_train_vali_epoch(holdout_set=holdout_set,
                                                        model=model,
                                                        criterion=criterion,
@@ -246,6 +249,8 @@ def train_holdout_model(holdout_set: HoldoutSet,
                                                        epoch=epoch,
                                                        writer=writer,
                                                        args=exp.args)
+        if exp.args.adjust_lr is True:
+            scheduler.step()
                 
         if (exp.args.warm_up_epochs is None \
                 or epoch >= exp.args.warm_up_epochs):
@@ -270,6 +275,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                     exp.exp_log(early_stopping_epoch=epoch)
                     break # stop epoch loop
             
+        # evaluation during training
         if exp.args.evaluate_every != 0 and (epoch+1) % exp.args.evaluate_every == 0:
             
             # sample wsis for evaluation once 

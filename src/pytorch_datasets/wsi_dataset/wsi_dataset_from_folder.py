@@ -15,7 +15,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from src.deephist.segmentation.attention_segmentation.Memory import Memory
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
@@ -186,13 +185,14 @@ class WSIDatasetFolder:
             n_x = self.metadata['n_x_max']
             n_y = self.metadata['n_y_max']
             
-            self.embedding_memory = Memory(n_x=n_x,
-                                           n_y=n_y,
-                                           n_w=n_wsis,
-                                           n_p=n_patches,
-                                           D=self.embedding_dim,
-                                           k=self.k_neighbours)
-            self.metadata['memory'] = self.embedding_memory.metadata
+            self.memory_params = dict(n_x=n_x,
+                                      n_y=n_y,
+                                      n_w=n_wsis,
+                                      n_p=n_patches,
+                                      D=self.embedding_dim,
+                                      k=self.k_neighbours)
+            
+            self.metadata['memory'] = self.memory_params
 
     def set_patch_label_type(self, patch_label_type: str):
         if patch_label_type == 'img':

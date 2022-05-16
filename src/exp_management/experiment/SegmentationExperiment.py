@@ -202,14 +202,14 @@ class SegmentationExperiment(MLExperiment):
         if self.args.attention_on:
             if not self.args.online:
                 new_performance = train_epoch(exp=self,
-                                            holdout_set=holdout_set,
-                                            model=model,
-                                            criterion=criterion,
-                                            optimizer=optimizer,
-                                            label_handler=label_handler,
-                                            epoch=epoch,
-                                            args=args,
-                                            writer=writer)
+                                              holdout_set=holdout_set,
+                                              model=model,
+                                              criterion=criterion,
+                                              optimizer=optimizer,
+                                              label_handler=label_handler,
+                                              epoch=epoch,
+                                              args=args,
+                                              writer=writer)
             else:
                 new_performance = train_epoch_online(exp=self,
                                                      holdout_set=holdout_set,

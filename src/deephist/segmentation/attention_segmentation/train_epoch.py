@@ -75,31 +75,23 @@ def train_epoch(exp: Experiment,
         else:
             model.eval()
             torch.set_grad_enabled(False)
-
+        
         epoch_dice_nominator = 0
         epoch_dice_denominator = 0
         sample_images = None
         sample_labels = None
         sample_preds = None
         
-        # get memory of dataset
-        memory = wsi_dataset.embedding_memory
-        
-        if args.memory_to_gpu is True:
-            memory.to_gpu(args.gpu)
-             
         # in first epoch, ignore embeddings memory
         # then, fill embedding memory
-        if epoch > 0: 
-            memory.fill_memory(data_loader=big_data_loader,
-                               model=model,
-                               gpu=args.gpu)
+        if epoch >= 0:
+            model.fill_memory(data_loader=big_data_loader)
                     
             if args.log_details:
                 # T-sne viz of embedding memory
                 viz.plot_tsne(tag=f"{phase}_memory_tsne",
                               wsi_dataset=wsi_dataset,
-                              memory=memory,
+                              memory=model.memory,
                               sample_size=1000,
                               label_handler=holdout_set.data_provider.label_handler,
                               epoch=epoch)
@@ -110,20 +102,9 @@ def train_epoch(exp: Experiment,
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
                 neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
-            
-            if epoch > 0:
-                k_neighbour_embedding, k_neighbour_mask = memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
-                
-                if not k_neighbour_embedding.is_cuda:
-                    k_neighbour_embedding = k_neighbour_embedding.cuda(args.gpu, non_blocking=True)
-                    k_neighbour_mask = k_neighbour_mask.cuda(args.gpu, non_blocking=True)
-            else:
-                k_neighbour_embedding = k_neighbour_mask = None
-          
-            logits, attention = model(images=images_gpu, 
-                                      neighbour_masks=k_neighbour_mask,
-                                      neighbour_embeddings=k_neighbour_embedding,
-                                      return_attention=True) 
+           
+                logits, attention, k_neighbour_mask = model(images=images_gpu,
+                                                            neighbours_idx=neighbours_idx)         
 
             if args.combine_criterion_after_epoch is not None:
                 loss = criterion(logits, labels_gpu, epoch)
@@ -157,17 +138,17 @@ def train_epoch(exp: Experiment,
                 
         #after epoch is finished:        
         log_epoch(phase=phase,
-                    metric_logger=metric_logger, 
-                    viz=viz, 
-                    epoch_dice_nominator=epoch_dice_nominator,
-                    epoch_dice_denominator=epoch_dice_denominator,
-                    model=model,
-                    sample_images=sample_images,
-                    sample_labels=sample_labels,
-                    sample_preds=sample_preds,
-                    label_handler=label_handler,
-                    epoch=epoch,
-                    args=args)
+                  metric_logger=metric_logger, 
+                  viz=viz, 
+                  epoch_dice_nominator=epoch_dice_nominator,
+                  epoch_dice_denominator=epoch_dice_denominator,
+                  model=model,
+                  sample_images=sample_images,
+                  sample_labels=sample_labels,
+                  sample_preds=sample_preds,
+                  label_handler=label_handler,
+                  epoch=epoch,
+                  args=args)
             
         print(f"Averaged {phase} stats:", metric_logger.global_str())
 
