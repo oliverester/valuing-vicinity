@@ -1,11 +1,11 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 4
+gpu: 0
 workers: 8
 nfold: 2
 batch-size: 32
-val-batch-size: 256
-epochs: 3
+val-batch-size: 512
+epochs: 1
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask
@@ -17,25 +17,16 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_sem_seg/a_d16_k8_deeplab_test
+logdir: logdir_sem_seg/d16_deeplab
 evaluate-every: 10
 warm-up-epochs: 0
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
-use-ce-weights: false
 n-eval-wsis: 10
 overlay-polygons: true
-embedding-dim: 1024
-k-neighbours: 8
 use-ln: true
-use-pos-encoding: true
-learn-pos-encoding: false
-num-attention-heads: 8
-attention-hidden-dim: 1024
-use-self-attention: false
-log-details: true
-memory-to-gpu: true
+log-details: false
 seed: 13
-performance-metric: dice
-attention-on : true
+performance-metric: loss
+attention-on: false
 sample-size: 5

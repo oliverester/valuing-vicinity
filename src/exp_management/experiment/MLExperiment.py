@@ -34,7 +34,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
         
 
     @abstractmethod
-    def set_model(self) -> nn.Module:
+    def get_model(self) -> nn.Module:
         """
         Creates nn.Module for ml experiment
 

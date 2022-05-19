@@ -37,6 +37,8 @@ class Memory(torch.nn.Module):
         self.D = D
         self.k = k
         
+        self._ready = False
+        
         self._initialize_emb_memory()
     
     def _initialize_emb_memory(self):
@@ -65,7 +67,33 @@ class Memory(torch.nn.Module):
     def _reset(self):
         self._memory[...] = 0
         self._mask[...] = 0
-            
+        
+        self._ready = False
+    
+    def _is_ready(self) -> bool:
+        """Returns wether the Memory is completedly fillep.
+
+        Returns:
+            bool: True if Memory is completly filled.
+        """
+        return self._ready
+    
+    def set_ready(self, n_patches: int = None ) -> None:
+        """Call set_ready to before using the Memory after complete fill up.
+
+        Args:
+            n_patches (int, optional): Provide number of patches in memory for sanity check. Defaults to None.
+        """
+        if n_patches is not None:
+            assert n_patches == torch.sum(torch.max(self._memory, dim=-1)[0] != 0).item(), \
+                    'memory is not completely built up.'
+            assert n_patches == int(torch.sum(self._mask).item()), \
+                    'memory is not completely built up.'  
+        if self.n_p is not None:
+            assert self.n_p == int(torch.sum(self._mask).item()), 'memory is not completely built up'
+        
+        self._ready = True
+        
     def to_gpu(self,
                gpu):
         self._memory = self._memory.cuda(gpu, non_blocking=False)
@@ -90,6 +118,10 @@ class Memory(torch.nn.Module):
             
     def get_k_neighbour_embeddings(self,
                                    neighbours_idx):
+        
+        if not self._is_ready:
+            raise Exception("Memory is not ready to use. Please fill first.")
+        
         batch_size = neighbours_idx.shape[-2]
        
             # select corresponding embeddings across batch and create a view on the memory with: batch, kernel size (k*2+1)^2, D       
@@ -110,6 +142,9 @@ class Memory(torch.nn.Module):
         return neighbour_embeddings, neighbour_mask
                 
     def get_embeddings(self, patches: List[PatchFromFile]):
+        
+        if not self._is_ready:
+            raise Exception("Memory is not ready to use. Please fill first.")
         
         wsi_idxs = []
         x_idxs = []

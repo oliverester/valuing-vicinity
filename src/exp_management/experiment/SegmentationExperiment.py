@@ -46,7 +46,6 @@ class SegmentationExperiment(MLExperiment):
                          testmode=testmode)
 
         self.data_provider = self.get_data_provider()
-        self.set_model()
     
     def get_data_provider(self):
         args = self.args
@@ -142,7 +141,7 @@ class SegmentationExperiment(MLExperiment):
             
 
     
-    def set_model(self):
+    def get_model(self):
         if not self.args.use_self_attention and self.args.k_neighbours == 0:
             raise Exception("If no self-attention than 0 neighbours is forbidden.")
 
@@ -187,6 +186,7 @@ class SegmentationExperiment(MLExperiment):
                                                     dropout=self.args.dropout,
                                                     online=self.args.online
                                                     )
+        return self.model
         
     def run_train_vali_epoch(self,
                              holdout_set,
@@ -272,6 +272,8 @@ class SegmentationExperiment(MLExperiment):
             from src.deephist.segmentation.semantic_segmentation.semantic_inference import do_inference
             inference_fun = do_inference
             
+        total_dice_nominator = 0
+        total_dice_denominator = 0
         for wsi in wsis:
             
             # free space on gpu
@@ -294,7 +296,11 @@ class SegmentationExperiment(MLExperiment):
                 patches = wsi.get_patches()
                 print(f"Inference for WSI {wsi.name}")       
                 wsi_loader = data_provider.get_wsi_loader(wsi=wsi)
-
+                
+                if self.args.attention_on:
+                    # for each WSI inference, we initialize a new Memory
+                    model.initialize_memory(**wsi.meta_data['memory'], is_eval=True, reset=True)
+                    
                 mask_predictions, masks = inference_fun(wsi_loader,
                                                         model,
                                                         gpu,
@@ -309,13 +315,18 @@ class SegmentationExperiment(MLExperiment):
                     mask_pred_batch = mask_pred_batch.cuda(gpu, non_blocking=True)
                     
                     # dice score
-                    wsi_dice_nominator += dice_nominator(y_true=mask_batch,
-                                                         y_pred=mask_pred_batch,
-                                                         n_classes=data_provider.number_classes)
+                    delta_dice_nominator = dice_nominator(y_true=mask_batch,
+                                                          y_pred=mask_pred_batch,
+                                                          n_classes=data_provider.number_classes)
+                    total_dice_nominator += delta_dice_nominator
+                    wsi_dice_nominator += delta_dice_nominator
                     
-                    wsi_dice_denominator += dice_denominator(y_true=mask_batch,
+                    delta_dice_denominator = dice_denominator(y_true=mask_batch,
                                                              y_pred=mask_pred_batch,
                                                              n_classes=data_provider.number_classes)
+                    total_dice_denominator += delta_dice_denominator
+                    wsi_dice_denominator += delta_dice_denominator
+                    
                     
                     # jaccard index
                     wsi_jaccard_nominator += jaccard_nominator(y_true=mask_batch,
@@ -383,7 +394,12 @@ class SegmentationExperiment(MLExperiment):
                 wsi.recall_score, wsi.recall_score_per_class = recall(true_positives=wsi_true_positives,
                                                                       positives=wsi_positives,
                                                                       n_classes=data_provider.number_classes)
-                                
+                
+        dice_score, dice_score_per_class = dice_coef(dice_nominator=total_dice_nominator,
+                                                     dice_denominator=total_dice_denominator,
+                                                     n_classes=data_provider.number_classes)
+        
+        return {'global_dice_score': dice_score, 'global_dice_score_per_class': dice_score_per_class}
      
     def mask_to_img(self,
                     mask: np.ndarray,

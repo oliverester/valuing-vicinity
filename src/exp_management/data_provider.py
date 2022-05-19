@@ -288,7 +288,6 @@ class DataProvider():
                                                        sampler=train_sampler,
                                                        drop_last=True,
                                                        collate_fn=self.collate_fn,
-                                                       #persistent_workers=True if self.workers > 0 and self.nfold is None else False
                                                        )
 
             return train_loader, train_sampler, train_dataset.get_label_handler()
@@ -308,7 +307,6 @@ class DataProvider():
                                                       num_workers=self.workers,
                                                       pin_memory=True,
                                                       collate_fn=self.collate_fn,
-                                                      persistent_workers=False
                                                       )
 
             return test_loader, test_dataset.get_label_handler()
@@ -390,8 +388,7 @@ class HoldoutSet():
             num_workers=self.data_provider.workers,
             pin_memory=True,
             drop_last=True, # important in train_loader because of batch norm
-            collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True
+            collate_fn=self.data_provider.collate_fn
         )
         
         # used to quickly fill memory with big batch size (no drop_last)
@@ -400,8 +397,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True
+            collate_fn=self.data_provider.collate_fn
         )
 
         self.vali_loader = torch.utils.data.DataLoader(
@@ -409,8 +405,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            collate_fn=self.data_provider.collate_fn,
-            persistent_workers=True
+            collate_fn=self.data_provider.collate_fn
         )
         
         if self.test_wsi_dataset is not None:
@@ -428,8 +423,7 @@ class HoldoutSet():
                 batch_size=int(self.data_provider.test_batch_size),
                 num_workers=self.data_provider.workers,
                 pin_memory=True,
-                collate_fn=self.data_provider.collate_fn,
-                persistent_workers=True
+                collate_fn=self.data_provider.collate_fn
             )
 
 class McSet():

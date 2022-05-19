@@ -66,7 +66,7 @@ class Experiment(metaclass=ABCMeta):
 
     def set_fold(self, fold: int):
 
-        log_path=Path(self.args.log_path) / f"fold_{fold}"
+        log_path=Path(self.args.logdir) / f"fold_{fold}"
         if self.args.reload_model_folder is not None:
             self.args.reload_model_folder =  str(self.args.reload_model_folder / f"fold_{fold}")
 

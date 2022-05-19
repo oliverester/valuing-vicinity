@@ -96,7 +96,12 @@ def train_epoch(exp: Experiment,
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
             # compute output and loss
             logits = model(images_gpu)
-            loss = criterion(logits, labels_gpu)
+            
+            if args.combine_criterion_after_epoch is not None:
+                loss = criterion(logits, labels_gpu, epoch)
+            else:
+                loss = criterion(logits, labels_gpu)
+                
             # compute gradiemt and do SGD step
             if phase == 'train':
                 optimizer.zero_grad()
@@ -111,24 +116,24 @@ def train_epoch(exp: Experiment,
                     sample_preds = logits.cpu().argmax(axis=1)
                     
                 batch_accuracy = torch.sum(logits.cpu().argmax(axis=1) == labels)/(len(images)*256*256)
-                
-                step_dice_nominator = dice_nominator(y_true=labels_gpu,
-                                                    y_pred=torch.argmax(logits, dim=1),
-                                                    n_classes=args.number_of_classes)
-                step_dice_denominator = dice_denominator(y_true=labels_gpu,
-                                                    y_pred=torch.argmax(logits, dim=1),
-                                                    n_classes=args.number_of_classes)
-                
-                # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
-                epoch_dice_nominator += step_dice_nominator
-                epoch_dice_denominator += step_dice_denominator
-            
-                step_dice, _ = dice_coef(dice_nominator=step_dice_nominator,
-                                        dice_denominator=step_dice_denominator,
-                                        n_classes=args.number_of_classes)
             else:    
-                step_dice = 0
+                #step_dice = 0
                 batch_accuracy = 0
+                            
+            step_dice_nominator = dice_nominator(y_true=labels_gpu,
+                                                y_pred=torch.argmax(logits, dim=1),
+                                                n_classes=args.number_of_classes)
+            step_dice_denominator = dice_denominator(y_true=labels_gpu,
+                                                y_pred=torch.argmax(logits, dim=1),
+                                                n_classes=args.number_of_classes)
+            
+            # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
+            epoch_dice_nominator += step_dice_nominator
+            epoch_dice_denominator += step_dice_denominator
+        
+            step_dice, _ = dice_coef(dice_nominator=step_dice_nominator,
+                                    dice_denominator=step_dice_denominator,
+                                    n_classes=args.number_of_classes)
                 
             if phase == 'train':
                 metric_logger.update(train_pixel_accuracy=(batch_accuracy, len(images)),
@@ -139,12 +144,12 @@ def train_epoch(exp: Experiment,
                                      vali_loss=(loss.item(), len(images)),
                                      vali_step_dice=step_dice)
         
-        if args.log_details:
-            epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
-                                      dice_denominator=epoch_dice_denominator,
-                                      n_classes=args.number_of_classes)
-        else:
-            epoch_dice = 0 
+        #if args.log_details:
+        epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
+                                  dice_denominator=epoch_dice_denominator,
+                                  n_classes=args.number_of_classes)
+        #else:
+        #    epoch_dice = 0 
         
         if phase == 'train':
             metric_logger.update(train_dice_coef=epoch_dice)

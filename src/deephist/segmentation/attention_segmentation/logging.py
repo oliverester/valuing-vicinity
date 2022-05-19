@@ -4,6 +4,7 @@ import torch
 from src.exp_management import tracking
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 
+
 def initialize_logging(metric_logger, phase, num_heads):
     
     metric_logger.add_meter(f'{phase}_loss',
@@ -78,24 +79,25 @@ def log_step(phase,
             
         batch_accuracy = torch.sum(logits_gpu.argmax(axis=1) == labels_gpu)/torch.numel(labels_gpu)
 
-        step_dice_nominator = dice_nominator(y_true=labels_gpu,
-                                            y_pred=torch.argmax(logits_gpu, dim=1),
-                                            n_classes=args.number_of_classes)
-        step_dice_denominator = dice_denominator(y_true=labels_gpu,
-                                                y_pred=torch.argmax(logits_gpu, dim=1),
-                                                n_classes=args.number_of_classes)
-        
-        step_dice, _ = dice_coef(dice_nominator=step_dice_nominator,
-                                dice_denominator=step_dice_denominator,
-                                n_classes=args.number_of_classes)
     else:    
-        step_dice = 0
-        step_dice_nominator = 0
-        step_dice_denominator = 0
+        # step_dice = 0
+        # step_dice_nominator = 0
+        # step_dice_denominator = 0
         batch_accuracy = 0
         excess_contribution_central_attention = None
         coeff_var_neighbour_attention = None
-        
+    
+    step_dice_nominator = dice_nominator(y_true=labels_gpu,
+                                         y_pred=torch.argmax(logits_gpu, dim=1),
+                                         n_classes=args.number_of_classes)
+    step_dice_denominator = dice_denominator(y_true=labels_gpu,
+                                             y_pred=torch.argmax(logits_gpu, dim=1),
+                                             n_classes=args.number_of_classes)
+    
+    step_dice, _ = dice_coef(dice_nominator=step_dice_nominator,
+                             dice_denominator=step_dice_denominator,
+                             n_classes=args.number_of_classes)
+    
     if phase == 'train':
         metric_logger.update(train_pixel_accuracy=(batch_accuracy, len(images)),
                              train_loss=(loss.item(), len(images)),
@@ -133,12 +135,12 @@ def log_epoch(phase,
               label_handler,
               epoch,
               args): 
-    if args.log_details:
-        epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
-                                    dice_denominator=epoch_dice_denominator,
-                                    n_classes=args.number_of_classes)
-    else:
-        epoch_dice = 0
+    #if args.log_details:
+    epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
+                              dice_denominator=epoch_dice_denominator,
+                              n_classes=args.number_of_classes)
+    # else:
+    #     epoch_dice = 0
         
     if phase == 'train':
         metric_logger.update(train_dice_coef=epoch_dice)

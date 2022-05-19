@@ -20,7 +20,7 @@ def run_patch_inference(exp: Experiment,
         k (int): Neighbourhood size
     """
 
-    model = exp.model
+    model = exp.get_model()
     reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder
     
     reload_model(model=model,

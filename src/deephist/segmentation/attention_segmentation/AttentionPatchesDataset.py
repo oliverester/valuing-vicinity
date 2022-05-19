@@ -63,7 +63,7 @@ class AttentionPatchesDataset(Dataset):
         return n_patches
     
     def __getitem__(self, idx):
-        
+                
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -71,6 +71,8 @@ class AttentionPatchesDataset(Dataset):
         if self.use_patches:
             patch = self.patches[idx]
         else:
+            if idx >= len(self.wsi_dataset.get_patches()):
+                print("stop") 
             patch = self.wsi_dataset.get_patches()[idx]
         
         # get patch idx in memory

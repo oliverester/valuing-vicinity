@@ -26,10 +26,10 @@ def evaluate_details(patch_coordinates,
             with selected_wsi.inference_mode(): # initializes memory
                 print("Building memory")
                 wsi_loader = exp.data_provider.get_wsi_loader(wsi=selected_wsi)
-                memory = selected_wsi.embedding_memory
-                memory.fill_memory(data_loader=wsi_loader,
-                                   model=model,
-                                   gpu=exp.args.gpu)
+
+                model.initialize_memory(**selected_wsi.meta_data['memory'], is_eval=True, reset=True)
+                model.fill_memory(data_loader=wsi_loader,
+                                  gpu=exp.args.gpu)
                 # select patches 
                 for x, y in patch_coordinates:
                     patch = selected_wsi.get_patch_from_position(x,y)
@@ -43,7 +43,6 @@ def evaluate_details(patch_coordinates,
                     #patches_loader = exp.data_provider.get_wsi_loader(patches=[p for p in list(context_patches.flatten()) if p is not None])
                     with selected_wsi.restrict_patches(context_patches_list):
                         outputs, labels, attentions, n_masks = memory_inference(data_loader=wsi_loader,
-                                                                                memory=memory,
                                                                                 model=model,
                                                                                 gpu=exp.args.gpu)  
                     # merge "batches"

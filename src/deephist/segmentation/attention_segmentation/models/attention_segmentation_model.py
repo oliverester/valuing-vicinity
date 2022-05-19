@@ -1,3 +1,4 @@
+from re import I
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 import torch
@@ -86,6 +87,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                 
     def initialize_memory(self,
                           is_eval=False, 
+                          reset=False,
                           **memory_params):
         """Initializes (train/eval) Memory - if not exists yet.
 
@@ -94,11 +96,11 @@ class AttentionSegmentationModel(torch.nn.Module):
             train Memory. Later on, controlled by model.eval(). Defaults to False.
         """
         if not is_eval:
-            if not hasattr(self, 'train_memory'):
+            if not hasattr(self, 'train_memory') or reset:
                 self.train_memory = Memory(**memory_params)
                 #super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
-            if not hasattr(self, 'val_memory'):
+            if not hasattr(self, 'val_memory') or reset:
                 self.val_memory = Memory(**memory_params)
                 #super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
 
@@ -123,14 +125,9 @@ class AttentionSegmentationModel(torch.nn.Module):
                     embeddings = self(images,
                                       return_embeddings=True)
                     self.memory.update_embeddings(patches_idx=patches_idx,
-                                           embeddings=embeddings)
-            
-            assert data_loader.dataset.__len__() == torch.sum(torch.max(self.memory._memory, dim=-1)[0] != 0).item(), \
-                'memory is not completely built up.'
-            assert data_loader.dataset.__len__() == int(torch.sum(self.memory._mask).item()), \
-                'memory is not completely built up.'
-            if self.memory.n_p is not None:
-                assert self.memory.n_p == int(torch.sum(self.memory._mask).item()), 'memory is not completely built up'
+                                                  embeddings=embeddings)
+            # flag memory ready to use
+            self.memory.set_ready(n_patches=data_loader.dataset.__len__())
         
     @property
     def memory(self):
@@ -246,12 +243,16 @@ class AttentionSegmentationModel(torch.nn.Module):
                     features[-1] = features_with_neighbour_context
                 else:
                     attention = None
+            
         # segmentation decoder    
         decoder_output = self.base_model.decoder(*features)
         # segmentation head
         masks = self.base_model.segmentation_head(decoder_output)
-
-        return masks, attention, neighbour_masks
+        
+        if self.attention_on:
+            return masks, attention, neighbour_masks
+        else:
+            return masks
 
            
             

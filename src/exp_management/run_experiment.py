@@ -78,17 +78,17 @@ def run_kfold_model(cv_set: CvSet,
                                     start_method='spawn')
     else:
         for fold_no in range(exp.args.nfold):
-            fold_exp = copy.deepcopy(exp)
+            #fold_exp = copy.deepcopy(exp)
             holdout_set = cv_set.holdout_sets[fold_no]
              
             # settings for folds
-            fold_exp.set_fold(fold=holdout_set.fold)
+            exp.set_fold(fold=holdout_set.fold)
             
-            fold_exp.args.fold = holdout_set.fold
+            exp.args.fold = holdout_set.fold
             print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
             
             run_holdout(holdout_set=holdout_set,
-                        exp=fold_exp)
+                        exp=exp)
             
             print(f"Finished fold {holdout_set.fold}")
                 
@@ -170,8 +170,9 @@ def eval_holdout_model(holdout_set: HoldoutSet,
         writer (SummaryWriter): _description_
     """
     
-    
-    model = exp.model
+    # reset model
+    model = exp.get_model()
+
     reload_epoch = reload_model(model=model,
                                 model_path=reload_from,
                                 gpu=exp.args.gpu)
@@ -212,7 +213,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
     """
     
     #torch.cuda.set_device(exp.args.gpu)
-    model = exp.model
+    model = exp.get_model()
     
     # initialize patch memory for train & val set
     if exp.args.attention_on:
@@ -337,13 +338,13 @@ def evaluate_model(exp: Experiment,
     print(f"Evaluating {tag} WSIs.")
           
     # inference for all patches
-    exp.wsi_inference(wsis=wsis,
-                      model=model,
-                      data_provider=exp.data_provider,
-                      gpu=exp.args.gpu)
+    global_evaluation =  exp.wsi_inference(wsis=wsis,
+                                           model=model,
+                                           data_provider=exp.data_provider,
+                                           gpu=exp.args.gpu)
     
     # evaluate on WSI level
-    evaluation = exp.evaluate_wsis(wsis=wsis,
+    wsi_evaluation = exp.evaluate_wsis(wsis=wsis,
                                    data_provider=exp.data_provider,
                                    log_path=Path(exp.args.log_path),
                                    tag=tag,
@@ -352,13 +353,13 @@ def evaluate_model(exp: Experiment,
                                    epoch=epoch)  
     
     if log_metrics == True:
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_dice', scalar_value=evaluation['wsi_mean_dice_scores'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_precision', scalar_value=evaluation['wsi_mean_precision'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_recall', scalar_value=evaluation['wsi_mean_recall'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_jaccard', scalar_value=evaluation['wsi_mean_jaccard_scores'])
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_dice', scalar_value=wsi_evaluation['wsi_mean_dice_scores'])
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_precision', scalar_value=wsi_evaluation['wsi_mean_precision'])
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_recall', scalar_value=wsi_evaluation['wsi_mean_recall'])
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_jaccard', scalar_value=wsi_evaluation['wsi_mean_jaccard_scores'])
         
     exp.exp_log(key=f'evaluation_wsi_{tag}_set',
-                value=evaluation)
+                value={**wsi_evaluation, **global_evaluation})
     
 
 def reload_model(model: nn.Module,

@@ -48,13 +48,11 @@ def train_epoch(exp: Experiment,
 
         if phase == 'train':
             data_loader = holdout_set.train_loader
-            # for fast embedding inference
+            # for fast embedding inference: higher batch size - no grads
             big_data_loader = holdout_set.big_train_loader
-            wsi_dataset = holdout_set.train_wsi_dataset
         else:
             data_loader = holdout_set.vali_loader
             big_data_loader = data_loader
-            wsi_dataset= holdout_set.vali_wsi_dataset
 
         
         metric_logger = tracking.MetricLogger(delimiter="  ",
@@ -84,17 +82,8 @@ def train_epoch(exp: Experiment,
         
         # in first epoch, ignore embeddings memory
         # then, fill embedding memory
-        if epoch >= 0:
+        if epoch > 0:
             model.fill_memory(data_loader=big_data_loader)
-                    
-            if args.log_details:
-                # T-sne viz of embedding memory
-                viz.plot_tsne(tag=f"{phase}_memory_tsne",
-                              wsi_dataset=wsi_dataset,
-                              memory=model.memory,
-                              sample_size=1000,
-                              label_handler=holdout_set.data_provider.label_handler,
-                              epoch=epoch)
                  
         for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
@@ -118,14 +107,14 @@ def train_epoch(exp: Experiment,
                 optimizer.step()
                                             
             step_dice_nominator, step_dice_denominator = log_step(phase=phase,   
-                                                                metric_logger=metric_logger,
-                                                                loss=loss,
-                                                                logits_gpu=logits,
-                                                                labels_gpu=labels_gpu,
-                                                                images=images,
-                                                                attention_gpu=attention, 
-                                                                neighbour_masks=k_neighbour_mask,
-                                                                args=args)
+                                                                  metric_logger=metric_logger,
+                                                                  loss=loss,
+                                                                  logits_gpu=logits,
+                                                                  labels_gpu=labels_gpu,
+                                                                  images=images,
+                                                                  attention_gpu=attention, 
+                                                                  neighbour_masks=k_neighbour_mask,
+                                                                  args=args)
             
             # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
             epoch_dice_nominator += step_dice_nominator
@@ -149,7 +138,7 @@ def train_epoch(exp: Experiment,
                   label_handler=label_handler,
                   epoch=epoch,
                   args=args)
-            
+
         print(f"Averaged {phase} stats:", metric_logger.global_str())
 
     if args.performance_metric == 'dice':

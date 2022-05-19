@@ -82,12 +82,15 @@ class WSIFromFolder():
         n_x = self.n_patches_col 
         n_y = self.n_patches_row
         n_patches = len(self._patches)
-        self.embedding_memory = Memory(n_x=n_x,
-                                       n_y=n_y,
-                                       n_w=n_wsis,
-                                       n_p=n_patches,
-                                       D=self.embedding_dim,
-                                       k=self.k_neighbours)
+    
+        self.memory_params = dict(n_x=n_x,
+                                    n_y=n_y,
+                                    n_w=n_wsis,
+                                    n_p=n_patches,
+                                    D=self.embedding_dim,
+                                    k=self.k_neighbours)
+        
+        self.meta_data['memory'] = self.memory_params
 
     def _load_thumbnail(self):
         thumbnail_path = self.root_path / (self.name + "_thumbnail.png")
