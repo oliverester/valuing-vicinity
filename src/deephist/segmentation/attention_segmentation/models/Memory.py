@@ -48,12 +48,12 @@ class Memory(torch.nn.Module):
     def _ensure_mode(func):
         def wrapper(self, *args, **kwargs):
             if self.training == (not self._is_eval):
-                func(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             else:
                 if self.training:
                     msg = "Error: You try accessing the val memory in train mode."
                 else:
-                    "Error: You try accessing the train memory in evaluation mode."
+                    msg = "Error: You try accessing the train memory in evaluation mode."
                 raise Exception(msg)
                 
         return wrapper
