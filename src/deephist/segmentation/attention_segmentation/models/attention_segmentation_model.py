@@ -97,11 +97,11 @@ class AttentionSegmentationModel(torch.nn.Module):
         """
         if not is_eval:
             if not hasattr(self, 'train_memory') or reset:
-                self.train_memory = Memory(**memory_params)
+                self.train_memory = Memory(**memory_params, is_eval=is_eval)
                 #super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
             if not hasattr(self, 'val_memory') or reset:
-                self.val_memory = Memory(**memory_params)
+                self.val_memory = Memory(**memory_params, is_eval=is_eval)
                 #super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
 
     def fill_memory(self, 
@@ -146,7 +146,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                 images: torch.Tensor, 
                 neighbours_idx: torch.Tensor = None,
                 neighbour_imgs: torch.Tensor = None,
-                return_embeddings: bool = False):
+                return_embeddings: bool = False,
+                block_memory: bool = False):
         """ 
         Attention segmentation model:
         If return_embeddings is True, only images must be provided and the model returns the compressed
@@ -167,11 +168,13 @@ class AttentionSegmentationModel(torch.nn.Module):
             [torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]: 
             Either embeddings tensor - or tuple of prediction masks, attention maps and binary neighbour masks tensors
         """
-                 
+        # set default values
+        attention = neighbour_masks = None
+        
         # segmentation encoder
         features = self.base_model.encoder(images)
         
-        if self.attention_on:
+        if self.attention_on and not block_memory:
             # add context to deepest feature maps feat_l by attending neighbourhood embeddings
             encoder_map = features[-1]
             
@@ -203,47 +206,43 @@ class AttentionSegmentationModel(torch.nn.Module):
                 
                 embeddings = torch.unsqueeze(embeddings, 1)
 
-                # attend neighbour embeddings if exist:
-                if neighbour_embeddings is not None:
-                    # sanity check: all embeddings should have values  
-                    if not self.online:                  
-                        assert torch.sum(neighbour_masks).item() == torch.sum(torch.max(neighbour_embeddings, dim=-1)[0] != 0).item(), \
-                            'all embeddings should have values'
-                            
-                    if not self.use_central_attention and not self.use_transformer:  
-                        # add empty central patches - happens when self-attention is turned off
-                        neighbour_masks = neighbour_masks * self.mask_central
+                # sanity check: all embeddings should have values  
+                if not self.online:                  
+                    assert torch.sum(neighbour_masks).item() == torch.sum(torch.max(neighbour_embeddings, dim=-1)[0] != 0).item(), \
+                        'all embeddings should have values'
+                        
+                if not self.use_central_attention and not self.use_transformer:  
+                    # add empty central patches - happens when self-attention is turned off
+                    neighbour_masks = neighbour_masks * self.mask_central
 
-                    # from "2d" to "1d"
-                    k_neighbour_masks = neighbour_masks.view(tmp_batch_size, 1, 1, -1)
-                    neighbour_embeddings = neighbour_embeddings.view(tmp_batch_size, -1, self.attention_input_dim)
-                
-                    if self.use_transformer:
-                        # replace central patch embedding with current embedding
-                        c_pos = (self.kernel_size*self.kernel_size-1)//2
-                        neighbour_embeddings[:,c_pos:(c_pos+1),:] = embeddings
-                        attended_embeddings, attention = self.transformer(x=neighbour_embeddings,
-                                                                          mask=k_neighbour_masks,
-                                                                          return_attention=True) 
-                    else: #MHA
-                        attended_embeddings, attention =  self.msa(q=embeddings,
-                                                                   kv=neighbour_embeddings,
-                                                                   mask=k_neighbour_masks,
-                                                                   return_attention=True)
-                    # f_fuse:
-                    # concatinate attended embeddings to encoded features      
-                    attended_embeddings = torch.squeeze(attended_embeddings, 1)
-                    # expand over e.g 8x8-convoluted feature map for Unet - or 32x32 for deeplabv3
-                    attended_embeddings = attended_embeddings[:,:,None,None].expand(-1,-1,encoder_map.shape[-2],encoder_map.shape[-1])
-                    features_with_neighbour_context = torch.cat((features[-1], attended_embeddings),1)
-                    # 1x1 conv to merge features to 2048 again
-                    features_with_neighbour_context = self.conv1x1(features_with_neighbour_context)
-                    
-                    # exchange feat_l with feat_l'
-                    features[-1] = features_with_neighbour_context
-                else:
-                    attention = None
+                # from "2d" to "1d"
+                k_neighbour_masks = neighbour_masks.view(tmp_batch_size, 1, 1, -1)
+                neighbour_embeddings = neighbour_embeddings.view(tmp_batch_size, -1, self.attention_input_dim)
             
+                if self.use_transformer:
+                    # replace central patch embedding with current embedding
+                    c_pos = (self.kernel_size*self.kernel_size-1)//2
+                    neighbour_embeddings[:,c_pos:(c_pos+1),:] = embeddings
+                    attended_embeddings, attention = self.transformer(x=neighbour_embeddings,
+                                                                        mask=k_neighbour_masks,
+                                                                        return_attention=True) 
+                else: #MHA
+                    attended_embeddings, attention =  self.msa(q=embeddings,
+                                                                kv=neighbour_embeddings,
+                                                                mask=k_neighbour_masks,
+                                                                return_attention=True)
+                # f_fuse:
+                # concatinate attended embeddings to encoded features      
+                attended_embeddings = torch.squeeze(attended_embeddings, 1)
+                # expand over e.g 8x8-convoluted feature map for Unet - or 32x32 for deeplabv3
+                attended_embeddings = attended_embeddings[:,:,None, None].expand(-1, -1, encoder_map.shape[-2], encoder_map.shape[-1])
+                features_with_neighbour_context = torch.cat((features[-1], attended_embeddings),1)
+                # 1x1 conv to merge features to 2048 again
+                features_with_neighbour_context = self.conv1x1(features_with_neighbour_context)
+                
+                # exchange feat_l with feat_l'
+                features[-1] = features_with_neighbour_context
+        
         # segmentation decoder    
         decoder_output = self.base_model.decoder(*features)
         # segmentation head

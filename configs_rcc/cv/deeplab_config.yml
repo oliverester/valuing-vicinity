@@ -5,7 +5,7 @@ workers: 8
 nfold: 5
 batch-size: 32
 val-batch-size: 512
-epochs: 200
+epochs: 50
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask
@@ -18,14 +18,13 @@ merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
 logdir: logdir_sem_seg/d16_deeplab
-evaluate-every: 0
+evaluate-every: 2
+n-eval-wsis: 5
 warm-up-epochs: 5
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
-n-eval-wsis: 10
 overlay-polygons: true
-use-ln: true
-log-details: false
+log-details: true
 seed: 13
 performance-metric: dice
 attention-on: false

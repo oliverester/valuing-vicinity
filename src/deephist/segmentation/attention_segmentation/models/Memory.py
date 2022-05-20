@@ -1,9 +1,10 @@
 import itertools
-from typing import List
+from typing import List, Tuple
 
 import torch
 
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
+
 
 
 class Memory(torch.nn.Module):
@@ -14,6 +15,7 @@ class Memory(torch.nn.Module):
                  n_w: int,
                  D: int,
                  k: int,
+                 is_eval: bool,
                  n_p: int = None,
                  ) -> None:
         """Memory to store compressed patch information and access patch neighbourhood.
@@ -24,6 +26,7 @@ class Memory(torch.nn.Module):
             n_w (int): Number of WSIs to fit into the memory
             D (int): Dimension of embedding
             k (int): Neighbourhood size
+            is_eval (bool): flag to control val/train memory
             n_p (int): Number of total patches that will be added to the memory. Only needed for sanity check. Optional.
         """
         super().__init__()
@@ -37,9 +40,23 @@ class Memory(torch.nn.Module):
         self.D = D
         self.k = k
         
+        self._is_eval = is_eval 
         self._ready = False
         
         self._initialize_emb_memory()
+    
+    def _ensure_mode(func):
+        def wrapper(self, *args, **kwargs):
+            if self.training == (not self._is_eval):
+                func(self, *args, **kwargs)
+            else:
+                if self.training:
+                    msg = "Error: You try accessing the val memory in train mode."
+                else:
+                    "Error: You try accessing the train memory in evaluation mode."
+                raise Exception(msg)
+                
+        return wrapper
     
     def _initialize_emb_memory(self):
         # plus k-boarder 
@@ -99,6 +116,7 @@ class Memory(torch.nn.Module):
         self._memory = self._memory.cuda(gpu, non_blocking=False)
         self._mask = self._mask.cuda(gpu, non_blocking=False)
 
+    @_ensure_mode
     def update_embeddings(self,
                           embeddings: torch.Tensor,
                           patches_idx = None):
@@ -115,11 +133,12 @@ class Memory(torch.nn.Module):
                    patches_idx[1], # x idx
                    patches_idx[2], # y idx
                   ] = 1
-            
-    def get_k_neighbour_embeddings(self,
-                                   neighbours_idx):
         
-        if not self._is_ready:
+    @_ensure_mode
+    def get_k_neighbour_embeddings(self,
+                                   neighbours_idx) -> Tuple[torch.Tensor, torch.Tensor]:
+        
+        if not self._is_ready():
             raise Exception("Memory is not ready to use. Please fill first.")
         
         batch_size = neighbours_idx.shape[-2]
@@ -140,10 +159,11 @@ class Memory(torch.nn.Module):
                                                             self.k*2+1,
                                                             self.k*2+1)
         return neighbour_embeddings, neighbour_mask
-                
+         
+    @_ensure_mode       
     def get_embeddings(self, patches: List[PatchFromFile]):
         
-        if not self._is_ready:
+        if not self._is_ready():
             raise Exception("Memory is not ready to use. Please fill first.")
         
         wsi_idxs = []
@@ -186,3 +206,4 @@ class Memory(torch.nn.Module):
         x, y = x + k, y + k 
         wsi_idx = patch.wsi.idx
         return wsi_idx, x, y
+    

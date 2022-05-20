@@ -93,7 +93,9 @@ def train_epoch(exp: Experiment,
                 neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
            
                 logits, attention, k_neighbour_mask = model(images=images_gpu,
-                                                            neighbours_idx=neighbours_idx)         
+                                                            neighbours_idx=neighbours_idx,
+                                                            block_memory=not(epoch > 0)
+                                                            )         
 
             if args.combine_criterion_after_epoch is not None:
                 loss = criterion(logits, labels_gpu, epoch)

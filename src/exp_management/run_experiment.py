@@ -196,6 +196,7 @@ def eval_holdout_model(holdout_set: HoldoutSet,
                        model=model,
                        wsis=holdout_set.test_wsi_dataset.wsis,
                        writer=writer,
+                       epoch=reload_epoch,
                        tag='test',
                        save_to_folder=True,
                        log_metrics=True)
@@ -304,6 +305,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                            wsis=train_wsis,
                            writer=writer,
                            epoch=epoch,
+                           log_metrics=True,
                            tag='train')
 
             evaluate_model(exp=exp,
@@ -311,6 +313,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                            wsis=val_wsis,
                            writer=writer,
                            epoch=epoch,
+                           log_metrics=True,
                            tag='vali')
 
 
@@ -345,20 +348,21 @@ def evaluate_model(exp: Experiment,
     
     # evaluate on WSI level
     wsi_evaluation = exp.evaluate_wsis(wsis=wsis,
-                                   data_provider=exp.data_provider,
-                                   log_path=Path(exp.args.log_path),
-                                   tag=tag,
-                                   writer=writer,
-                                   save_to_folder=save_to_folder,
-                                   epoch=epoch)  
+                                       data_provider=exp.data_provider,
+                                       log_path=Path(exp.args.log_path),
+                                       tag=tag,
+                                       writer=writer,
+                                       save_to_folder=save_to_folder,
+                                       epoch=epoch)  
     
     if log_metrics == True:
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_dice', scalar_value=wsi_evaluation['wsi_mean_dice_scores'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_precision', scalar_value=wsi_evaluation['wsi_mean_precision'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_recall', scalar_value=wsi_evaluation['wsi_mean_recall'])
-        writer.add_scalar(tag=f'evaluation/{tag}_wsi_jaccard', scalar_value=wsi_evaluation['wsi_mean_jaccard_scores'])
-        
-    exp.exp_log(key=f'evaluation_wsi_{tag}_set',
+        writer.add_scalar(tag=f'evaluation/{tag}_global_dice', scalar_value=global_evaluation['global_dice_score'], global_step=epoch)
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_dice', scalar_value=wsi_evaluation['wsi_mean_dice_scores'], global_step=epoch)
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_precision', scalar_value=wsi_evaluation['wsi_mean_precision'], global_step=epoch)
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_recall', scalar_value=wsi_evaluation['wsi_mean_recall'], global_step=epoch)
+        writer.add_scalar(tag=f'evaluation/{tag}_wsi_jaccard', scalar_value=wsi_evaluation['wsi_mean_jaccard_scores'], global_step=epoch)
+    
+    exp.exp_log(key=f'evaluation_wsi_{tag}_epoch_{epoch}_set',
                 value={**wsi_evaluation, **global_evaluation})
     
 

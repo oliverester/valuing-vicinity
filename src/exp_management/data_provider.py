@@ -405,6 +405,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
+            shuffle=True, # for visualization purpose
             collate_fn=self.data_provider.collate_fn
         )
         
