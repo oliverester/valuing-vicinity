@@ -84,14 +84,16 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
             gpu (int): [description]
         """
 
-    def get_optimizer(self, model):
+    def get_optimizer(self, 
+                      model: torch.nn.Module
+                      ) -> torch.optim.Optimizer:
         """Basic optimizer
 
         Args:
-            model ([type]): [description]
+            model (torch.nn.Module): torch model
 
         Returns:
-            [type]: [description]
+            torch.optim.Optimizer: A torch optimizer
         """
         optim_params = model.parameters()
         optimizer = torch.optim.SGD(optim_params,
@@ -116,7 +118,8 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                     epoch: int = None,
                     writer = None,
                     save_to_folder = False,
-                    tag: str = "") -> List[Dict]:
+                    tag: str = ""
+                    ) -> List[Dict]:
         """
         Run patch inference and returns WSI predictions
 

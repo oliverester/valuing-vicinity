@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 2
+gpu: 1
 workers: 8
 nfold: 2
 batch-size: 32
@@ -18,7 +18,7 @@ merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
 logdir: logdir_sem_seg/a_d16_k8_deeplab_test
-evaluate-every: 1
+evaluate-every: 2
 warm-up-epochs: 0
 early-stopping-epochs: 10
 criterion: 'cross_entropy'

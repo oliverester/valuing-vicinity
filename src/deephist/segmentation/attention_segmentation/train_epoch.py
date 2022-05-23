@@ -27,7 +27,8 @@ def train_epoch(exp: Experiment,
                 label_handler: LabelHandler,
                 epoch: int,
                 args: Dict,
-                writer: SummaryWriter) -> float:
+                writer: SummaryWriter
+                ) -> float:
     """Given the holdout-set: Train the model on train-dataloader. Evaluate on val-dataloader
 
     Args:
@@ -43,23 +44,14 @@ def train_epoch(exp: Experiment,
     Returns:
         float: Average validation performance (smaller is better) after training step
     """
+         
+    metric_logger = tracking.MetricLogger(delimiter="  ",
+                                            tensorboard_writer=writer,
+                                            args=args)
+    viz = tracking.Visualizer(writer=writer)
     
     for phase in ['train', 'vali']:
-
-        if phase == 'train':
-            data_loader = holdout_set.train_loader
-            # for fast embedding inference: higher batch size - no grads
-            big_data_loader = holdout_set.big_train_loader
-        else:
-            data_loader = holdout_set.vali_loader
-            big_data_loader = data_loader
-
-        
-        metric_logger = tracking.MetricLogger(delimiter="  ",
-                                              tensorboard_writer=writer,
-                                              args=args)
-        viz = tracking.Visualizer(writer=writer)
-        
+    
         initialize_logging(metric_logger=metric_logger,
                            phase=phase,
                            num_heads=args.num_attention_heads)
@@ -67,10 +59,17 @@ def train_epoch(exp: Experiment,
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 
         if phase == 'train':
+            data_loader = holdout_set.train_loader
+            # for fast embedding inference: higher batch size - no grads
+            big_data_loader = holdout_set.big_train_loader
+           
             # switch to train mode
             model.train()
             torch.set_grad_enabled(True)
         else:
+            data_loader = holdout_set.vali_loader
+            big_data_loader = data_loader
+
             model.eval()
             torch.set_grad_enabled(False)
         
@@ -82,8 +81,10 @@ def train_epoch(exp: Experiment,
         
         # in first epoch, ignore embeddings memory
         # then, fill embedding memory
-        if epoch > 0:
-            model.fill_memory(data_loader=big_data_loader)
+        if epoch >= 0:
+            # initialize patch memory for train/val set
+            model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
+            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu)
                  
         for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             

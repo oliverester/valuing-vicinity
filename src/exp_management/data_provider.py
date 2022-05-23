@@ -282,7 +282,7 @@ class DataProvider():
             print(f"Train Data set length {len(train_dataset)}")
             train_loader = torch.utils.data.DataLoader(train_dataset,
                                                        batch_size=int(self.batch_size),
-                                                       shuffle=(train_sampler is None),
+                                                       shuffle=False, #(train_sampler is None),
                                                        num_workers=self.workers,
                                                        pin_memory=True,
                                                        sampler=train_sampler,
@@ -353,12 +353,6 @@ class HoldoutSet():
         self.data_provider = data_provider
         self.fold = fold
         
-        if self.data_provider.embedding_dim is not None:
-            self.train_wsi_dataset.initialize_memory()
-            self.vali_wsi_dataset.initialize_memory()
-            if test_wsi_dataset is not None:
-                self.test_wsi_dataset.initialize_memory()
-
         self._create_loader()
 
 
@@ -384,7 +378,7 @@ class HoldoutSet():
         self.train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
             batch_size=int(self.data_provider.batch_size),
-            shuffle=True,
+            shuffle=False,
             num_workers=self.data_provider.workers,
             pin_memory=True,
             drop_last=True, # important in train_loader because of batch norm
@@ -405,7 +399,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            shuffle=True, # for visualization purpose
+            shuffle=False, # for visualization purpose
             collate_fn=self.data_provider.collate_fn
         )
         

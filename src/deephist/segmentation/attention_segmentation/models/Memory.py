@@ -16,6 +16,7 @@ class Memory(torch.nn.Module):
                  D: int,
                  k: int,
                  is_eval: bool,
+                 gpu: int,
                  n_p: int = None,
                  ) -> None:
         """Memory to store compressed patch information and access patch neighbourhood.
@@ -27,6 +28,7 @@ class Memory(torch.nn.Module):
             D (int): Dimension of embedding
             k (int): Neighbourhood size
             is_eval (bool): flag to control val/train memory
+            gpu (int): GPU device to use
             n_p (int): Number of total patches that will be added to the memory. Only needed for sanity check. Optional.
         """
         super().__init__()
@@ -43,7 +45,7 @@ class Memory(torch.nn.Module):
         self._is_eval = is_eval 
         self._ready = False
         
-        self._initialize_emb_memory()
+        self._initialize_emb_memory(gpu=gpu)
     
     def _ensure_mode(func):
         def wrapper(self, *args, **kwargs):
@@ -58,14 +60,14 @@ class Memory(torch.nn.Module):
                 
         return wrapper
     
-    def _initialize_emb_memory(self):
+    def _initialize_emb_memory(self, gpu: int):
         # plus k-boarder 
         memory = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k, self.D), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=True)
+                                dtype=torch.float32, device=f"cuda:{gpu}")
         mask = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k), 
                                 fill_value=0,
-                                dtype=torch.float32, pin_memory=True)
+                                dtype=torch.float32, device=f"cuda:{gpu}")
     
         print(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024
@@ -80,6 +82,10 @@ class Memory(torch.nn.Module):
 
         self.register_buffer('_memory', memory, persistent=False)
         self.register_buffer('_mask', mask, persistent=False)
+        
+        # ensure module is synchronized with model - this is needed due to on-the-fly initialization of Memory
+        if self._is_eval:
+            self.eval()
         
     def _reset(self):
         self._memory[...] = 0

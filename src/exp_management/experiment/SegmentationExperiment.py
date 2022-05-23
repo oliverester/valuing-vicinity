@@ -164,29 +164,29 @@ class SegmentationExperiment(MLExperiment):
                     'scale_list': [4],
                     'patch_size': 256
                 }
-            self.model = YclassRes18Net(cfg=cfg)
+            model = YclassRes18Net(cfg=cfg)
         else:
-            self.model = AttentionSegmentationModel(arch=self.args.arch,
-                                                    encoder_name=self.args.encoder,
-                                                    encoder_weights='imagenet',
-                                                    number_of_classes=self.args.number_of_classes,
-                                                    attention_input_dim=self.args.embedding_dim,
-                                                    attention_hidden_dim=self.args.attention_hidden_dim,
-                                                    num_attention_heads=self.args.num_attention_heads,
-                                                    k=self.args.k_neighbours,
-                                                    use_ln=self.args.use_ln,
-                                                    use_pos_encoding=self.args.use_pos_encoding,
-                                                    use_central_attention=self.args.use_self_attention,
-                                                    learn_pos_encoding=self.args.learn_pos_encoding,
-                                                    attention_on=self.args.attention_on,
-                                                    use_transformer=self.args.use_transformer,
-                                                    transformer_depth=self.args.transformer_depth,
-                                                    mlp_hidden_dim=self.args.mlp_hidden_dim,
-                                                    emb_dropout=self.args.emb_dropout,
-                                                    dropout=self.args.dropout,
-                                                    online=self.args.online
-                                                    )
-        return self.model
+            model = AttentionSegmentationModel(arch=self.args.arch,
+                                               encoder_name=self.args.encoder,
+                                               encoder_weights='imagenet',
+                                               number_of_classes=self.args.number_of_classes,
+                                               attention_input_dim=self.args.embedding_dim,
+                                               attention_hidden_dim=self.args.attention_hidden_dim,
+                                               num_attention_heads=self.args.num_attention_heads,
+                                               k=self.args.k_neighbours,
+                                               use_ln=self.args.use_ln,
+                                               use_pos_encoding=self.args.use_pos_encoding,
+                                               use_central_attention=self.args.use_self_attention,
+                                               learn_pos_encoding=self.args.learn_pos_encoding,
+                                               attention_on=self.args.attention_on,
+                                               use_transformer=self.args.use_transformer,
+                                               transformer_depth=self.args.transformer_depth,
+                                               mlp_hidden_dim=self.args.mlp_hidden_dim,
+                                               emb_dropout=self.args.emb_dropout,
+                                               dropout=self.args.dropout,
+                                               online=self.args.online
+                                               )
+        return model
         
     def run_train_vali_epoch(self,
                              holdout_set,
@@ -297,10 +297,6 @@ class SegmentationExperiment(MLExperiment):
                 print(f"Inference for WSI {wsi.name}")       
                 wsi_loader = data_provider.get_wsi_loader(wsi=wsi)
                 
-                if self.args.attention_on:
-                    # for each WSI inference, we initialize a new Memory
-                    model.initialize_memory(**wsi.meta_data['memory'], is_eval=True, reset=True)
-                    
                 mask_predictions, masks = inference_fun(wsi_loader,
                                                         model,
                                                         gpu,

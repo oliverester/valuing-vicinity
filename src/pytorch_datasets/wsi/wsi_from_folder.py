@@ -74,9 +74,11 @@ class WSIFromFolder():
         self._all_patch_mode = False
         
         self._restricted_patches = None
+        
+        self._initialize_memory()
 
         
-    def initialize_memory(self):
+    def _initialize_memory(self):
         # inference embedding memory: one wsi
         n_wsis = 1
         n_x = self.n_patches_col 
@@ -444,7 +446,6 @@ class WSIFromFolder():
         self._all_patch_mode = True
         #import: set each wsi index to 0 - dataloader holds one WSI only in each interation
         if self.wsi_dataset.attention_on:
-            self.initialize_memory()
             if self.k_neighbours is not None:
                 self._patch_map, self._pad_size = self._create_patch_map(pad_size=self.k_neighbours)
         yield(self)

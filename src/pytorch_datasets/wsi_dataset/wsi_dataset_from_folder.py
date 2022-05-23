@@ -177,8 +177,9 @@ class WSIDatasetFolder:
 
         self.wsis = self._create_wsis()
         self._collect_patches()
+        self._initialize_memory()
         
-    def initialize_memory(self):
+    def _initialize_memory(self):
         if self.attention_on:
             n_wsis = self.metadata['n_wsis']
             n_patches = self.metadata['n_patches']
@@ -530,6 +531,7 @@ class WSIDatasetFolder:
         assert len(wsi_dataset_subset.wsis) == len(wsis), "Missing WSI in new data set"
         
         wsi_dataset_subset._collect_patches()
+        wsi_dataset_subset._initialize_memory()
         # reset wsi indices
         for idx in range(len(wsi_dataset_subset.wsis)):
             wsi_dataset_subset.wsis[idx].idx = idx

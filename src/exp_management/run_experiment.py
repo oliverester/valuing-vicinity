@@ -20,13 +20,13 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
-from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import CvSet, HoldoutSet
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
 
-def run_experiment(exp: Experiment):
+def run_experiment(exp: Experiment
+                   ) -> None:
     """Run a supervised ML-experiment from config file
 
     Args:
@@ -51,11 +51,11 @@ def run_experiment(exp: Experiment):
     else:
         run_kfold_model(cv_set=data_provider.cv_set,
                         exp=exp)
-
-
+        
 
 def run_kfold_model(cv_set: CvSet,
-                    exp: Experiment):
+                    exp: Experiment
+                    ) -> None:
     """Runs multiple folds in parallel on given GPUs.
 
     Args:
@@ -87,25 +87,25 @@ def run_kfold_model(cv_set: CvSet,
             exp.args.fold = holdout_set.fold
             print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
             
-            run_holdout(holdout_set=holdout_set,
+            run_holdout(holdout_set=cv_set.holdout_sets[0],
                         exp=exp)
             
             print(f"Finished fold {holdout_set.fold}")
-                
-        
-    # here: aggregate kfold results?
+                   
+    # TBD: here aggregate kfold results
 
 def run_holdout_model_in_parallel(proc_idx: int,
                                   holdout_sets: List[HoldoutSet],
                                   gpu_queue: mp.Queue,
-                                  exp: Experiment):
+                                  exp: Experiment
+                                  ) -> None:
     """Wrapper to run a holdout set in parallel
 
     Args:
         proc_idx (int): Fold-id
-        holdout_sets (List[HoldoutSet]): _description_
-        gpu_queue (mp.Queue): _description_
-        exp (Experiment): _description_
+        holdout_sets (List[HoldoutSet]): List of Holdout sets
+        gpu_queue (mp.Queue): a queue to store the gpu tokens
+        exp (Experiment): the Experiment
     """
     
     holdout_set = holdout_sets[proc_idx]
@@ -126,13 +126,14 @@ def run_holdout_model_in_parallel(proc_idx: int,
     gpu_queue.put(exp.args.gpu)
 
 def run_holdout(exp: Experiment,
-                holdout_set: HoldoutSet):
+                holdout_set: HoldoutSet
+                ) -> None:
     """
     Runs a holdout set. First train, second evaluate.
 
     Args:
-        exp (Experiment): _description_
-        holdout_set (HoldoutSet): _description_
+        exp (Experiment): the Exeperiment
+        holdout_set (HoldoutSet): the HoldoutSet
     """
     
     #log holdout details to experiment
@@ -159,15 +160,16 @@ def run_holdout(exp: Experiment,
 def eval_holdout_model(holdout_set: HoldoutSet,
                        exp: Experiment,
                        reload_from: str,
-                       writer: SummaryWriter):
+                       writer: SummaryWriter
+                       ) -> None:
     """
     Evaluates a holdout set from a reloaded model - optionally with test data.
 
     Args:
-        holdout_set (HoldoutSet): _description_
-        exp (Experiment): _description_
-        reload_from (str): _description_
-        writer (SummaryWriter): _description_
+        holdout_set (HoldoutSet): the HoldoutSet
+        exp (Experiment): the Experiment
+        reload_from (str): the path to the stored model
+        writer (SummaryWriter): a tensorboard Writer
     """
     
     # reset model
@@ -203,7 +205,8 @@ def eval_holdout_model(holdout_set: HoldoutSet,
         
 def train_holdout_model(holdout_set: HoldoutSet,
                         exp: Experiment,
-                        writer: SummaryWriter):
+                        writer: SummaryWriter
+                        ) -> None:
     """
     Train a model on given data.
 
@@ -215,11 +218,6 @@ def train_holdout_model(holdout_set: HoldoutSet,
     
     #torch.cuda.set_device(exp.args.gpu)
     model = exp.get_model()
-    
-    # initialize patch memory for train & val set
-    if exp.args.attention_on:
-        model.initialize_memory(**holdout_set.train_wsi_dataset.memory_params)
-        model.initialize_memory(**holdout_set.vali_wsi_dataset.memory_params, is_eval=True)
 
     model = model.cuda(exp.args.gpu)
 
@@ -234,7 +232,9 @@ def train_holdout_model(holdout_set: HoldoutSet,
     optimizer = exp.get_optimizer(model)
     
     if exp.args.adjust_lr is True:
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=exp.args.lr_gamma, verbose=True)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 
+                                                           gamma=exp.args.lr_gamma, 
+                                                           verbose=True)
 
     cudnn.benchmark = True
 
@@ -324,18 +324,19 @@ def evaluate_model(exp: Experiment,
                    tag: str,
                    epoch: int = None,
                    save_to_folder: bool = False,
-                   log_metrics: bool = False):
+                   log_metrics: bool = False
+                   ) -> None:
     """ Given a model, the WSIs are first inferenced patch-wise and then evaluated (viz, metrics) 
 
     Args:
-        exp (Experiment): _description_
-        model (nn.modules): _description_
-        wsis (List[WSIFromFolder]): _description_
-        writer (SummaryWriter): _description_
-        tag (str): _description_
-        epoch (int, optional): _description_. Defaults to None.
-        save_to_folder (bool, optional): _description_. Defaults to False.
-        log_metrics (bool, optional): _description_. Defaults to False.
+        exp (Experiment): the Experiment
+        model (nn.modules): the model
+        wsis (List[WSIFromFolder]): a List of WSI objects to evaluate
+        writer (SummaryWriter): a tensorboard Writer
+        tag (str): a name tag for the evaluation.
+        epoch (int, optional): the epoch of the model. Defaults to None.
+        save_to_folder (bool, optional): target folder to save the evaluation results to. Defaults to False.
+        log_metrics (bool, optional): Set to True if you want to log tensorboard. Defaults to False.
     """
     
     print(f"Evaluating {tag} WSIs.")
@@ -377,7 +378,7 @@ def reload_model(model: nn.Module,
         model_path (Path): path to model log folder (must contain 'checkpoints/model_best.pth.tar')
 
     Raises:
-        Exception: [description]
+        Exception: Raised if model path cannot be found.
         
     Returns: epoch of reloaded model
     """
@@ -397,7 +398,7 @@ def reload_model(model: nn.Module,
 def adjust_learning_rate(optimizer,
                          init_lr,
                          epoch,
-                         args):
+                         args) -> None:
     """
     Decay the learning rate based on schedule
     """
@@ -410,7 +411,15 @@ def adjust_learning_rate(optimizer,
             param_group['lr'] = cur_lr
 
 
-def count_parameters(model):
+def count_parameters(model: torch.nn.Module) -> int:
+    """Counts the model parameters
+
+    Args:
+        model (torch.nn.Module): a torch model
+
+    Returns:
+        int: number of model parameters
+    """
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():

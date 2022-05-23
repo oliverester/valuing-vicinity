@@ -32,7 +32,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                  learn_pos_encoding: bool = False,
                  attention_on: bool = True,
                  use_transformer: bool = False,
-                 online: bool = False) -> None:
+                 online: bool = False
+                 ) -> None:
         super().__init__()
         
         self.online = online
@@ -52,9 +53,9 @@ class AttentionSegmentationModel(torch.nn.Module):
                     
         # Pytorch Segmentation Models: Baseline
         self.base_model = create_model(arch=arch,
-                                  encoder_name=encoder_name,
-                                  encoder_weights=encoder_weights,
-                                  classes=number_of_classes)
+                                       encoder_name=encoder_name,
+                                       encoder_weights=encoder_weights,
+                                       classes=number_of_classes)
         
         if self.attention_on:
             # f_emb
@@ -86,28 +87,35 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               learn_pos_encoding=learn_pos_encoding)
                 
     def initialize_memory(self,
-                          is_eval=False, 
-                          reset=False,
+                          gpu: int,
+                          reset=True,
                           **memory_params):
-        """Initializes (train/eval) Memory - if not exists yet.
+        """Initializes (train/eval) Memory - use model.eval() to initialize validation/evaluation Memory.
 
         Args:
             is_eval (bool, optional): If true, creates eval Memory - else
             train Memory. Later on, controlled by model.eval(). Defaults to False.
         """
-        if not is_eval:
+        if self.training:
             if not hasattr(self, 'train_memory') or reset:
-                self.train_memory = Memory(**memory_params, is_eval=is_eval)
-                #super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
+                print("Initializing train memory")
+                train_memory = Memory(**memory_params, is_eval=False, gpu=gpu)
+                super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
             if not hasattr(self, 'val_memory') or reset:
-                self.val_memory = Memory(**memory_params, is_eval=is_eval)
-                #super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
+                print("Initializing eval memory")
+                val_memory = Memory(**memory_params, is_eval=True, gpu=gpu)
+                super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
+                
+        # sync training-mode for new module
+        
 
     def fill_memory(self, 
-                    data_loader: torch.utils.data.dataloader.DataLoader):
-        """Fill the memory by providing a dataloader that iterates the patches.
-
+                    data_loader: torch.utils.data.dataloader.DataLoader,
+                    gpu: int):
+        """Fill the memory by providing a dataloader that iterates the patches. 
+        Iterate must provide all n_p patches.
+        
         Args:
             data_loader (torch.utils.data.dataloader.DataLoader): DataLoader
         """
@@ -120,7 +128,7 @@ class AttentionSegmentationModel(torch.nn.Module):
         with data_loader.dataset.all_patch_mode():
             with torch.no_grad():
                 for images, _, patches_idx, _ in tqdm(data_loader):
-                    images = images.cuda(next(self.parameters()).device, non_blocking=True)
+                    images = images.cuda(gpu, non_blocking=True)
                         
                     embeddings = self(images,
                                       return_embeddings=True)

@@ -18,11 +18,13 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
     Returns:
         [type]: [description]
     """
-
+    
     # first loop: create neighbourhood embedding memory
     with torch.no_grad():
         model.eval()
-        model.fill_memory(data_loader=data_loader)
+        model.initialize_memory(**data_loader.dataset.wsi_dataset.meta_data['memory'], gpu=gpu)
+        model.fill_memory(data_loader=data_loader, gpu=gpu)
+        
         outputs, labels, attentions, n_masks = memory_inference(data_loader=data_loader,
                                                                 model=model,
                                                                 gpu=gpu)
