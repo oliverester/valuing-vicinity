@@ -81,7 +81,7 @@ def train_epoch(exp: Experiment,
         
         # in first epoch, ignore embeddings memory
         # then, fill embedding memory
-        if epoch >= 0:
+        if epoch > 0:
             # initialize patch memory for train/val set
             model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
             model.fill_memory(data_loader=big_data_loader, gpu=args.gpu)

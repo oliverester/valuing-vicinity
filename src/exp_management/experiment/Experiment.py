@@ -13,8 +13,9 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-from src.exp_management.config import Config
 from src.exp_management import tracking
+from src.exp_management.config import Config
+from src.exp_management.helper import set_seed
 from src.lib.better_abc import ABCMeta, abstract_attribute
 
 class Experiment(metaclass=ABCMeta):
@@ -50,12 +51,8 @@ class Experiment(metaclass=ABCMeta):
             self.args.logdir = str(Path(self.args.logdir) / self.model_name)
             self.set_log_path(log_path=Path(self.args.logdir))
             
-        if self.args.seed is not None:
-            random.seed(self.args.seed)
-            torch.manual_seed(self.args.seed)
-            torch.cuda.manual_seed_all(self.args.seed)
-            np.random.seed(self.args.seed)
-        
+        if self.args.seed is not None:  
+            set_seed(self.args.seed)
             cudnn.deterministic = True
             warnings.warn('You have chosen to seed training. '
                         'This will turn on the CUDNN deterministic setting, '

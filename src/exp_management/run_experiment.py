@@ -20,6 +20,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
+from src.exp_management.helper import set_seed
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import CvSet, HoldoutSet
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
@@ -80,14 +81,14 @@ def run_kfold_model(cv_set: CvSet,
         for fold_no in range(exp.args.nfold):
             #fold_exp = copy.deepcopy(exp)
             holdout_set = cv_set.holdout_sets[fold_no]
-             
+            
             # settings for folds
             exp.set_fold(fold=holdout_set.fold)
             
             exp.args.fold = holdout_set.fold
             print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
             
-            run_holdout(holdout_set=cv_set.holdout_sets[0],
+            run_holdout(holdout_set=holdout_set,
                         exp=exp)
             
             print(f"Finished fold {holdout_set.fold}")
@@ -135,7 +136,8 @@ def run_holdout(exp: Experiment,
         exp (Experiment): the Exeperiment
         holdout_set (HoldoutSet): the HoldoutSet
     """
-    
+    set_seed(exp.args.seed)
+
     #log holdout details to experiment
     exp.exp_log(holdout_set = holdout_set.metadata)
     
