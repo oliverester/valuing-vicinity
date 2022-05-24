@@ -12,12 +12,12 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torch.utils.tensorboard import SummaryWriter
 
+from src.deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
 from src.exp_management import tracking
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import HoldoutSet
 from src.pytorch_datasets.label_handler import LabelHandler
-
 
 
 def train_epoch(exp: Experiment,
@@ -44,44 +44,28 @@ def train_epoch(exp: Experiment,
     Returns:
         float: Average validation loss after training step
     """
-
+    
+    metric_logger = tracking.MetricLogger(delimiter="  ",
+                                          tensorboard_writer=writer,
+                                          args=args)
+    viz = tracking.Visualizer(writer=writer)
+    
     for phase in ['train', 'vali']:
         
-        if phase == 'train':
-            data_loader = holdout_set.train_loader
-        else:
-            data_loader = holdout_set.vali_loader
-
-        metric_logger = tracking.MetricLogger(delimiter="  ",
-                                              tensorboard_writer=writer,
-                                              args=args)
-        metric_logger.add_meter(f'{phase}_loss',
-                                tracking.SmoothedValue(window_size=1,
-                                                       type='global_avg'))
-        metric_logger.add_meter(f'{phase}_pixel_accuracy',
-                                tracking.SmoothedValue(window_size=1,
-                                                       type='global_avg'))
-
-        metric_logger.add_meter(f'{phase}_dice_coef',
-                                tracking.SmoothedValue(window_size=1,
-                                                       type='global_avg'))
+        initialize_logging(metric_logger=metric_logger,
+                          phase=phase)
         
-        metric_logger.add_meter(f'{phase}_step_dice',
-                                tracking.SmoothedValue(window_size=1,
-                                                       type='global_avg',
-                                                       to_tensorboard=False))
-
-        viz = tracking.Visualizer(writer=writer)
-
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 
         if phase == 'train':
             # switch to train mode
             model.train()
             torch.set_grad_enabled(True)
+            data_loader = holdout_set.train_loader
         else:
             model.eval()
             torch.set_grad_enabled(False)
+            data_loader = holdout_set.vali_loader
 
         epoch_dice_nominator = 0
         epoch_dice_denominator = 0
@@ -106,77 +90,37 @@ def train_epoch(exp: Experiment,
                 loss.backward()
                 optimizer.step()
             
-            if args.log_details:
-                # measure data loading time
-                if sample_images is None:
-                    sample_images = exp.unnormalize(images)
-                    sample_labels = labels
-                    sample_preds = logits.cpu().argmax(axis=1)
+            if sample_images is None:
+                sample_images = exp.unnormalize(images)
+                sample_labels = labels
+                sample_preds = logits.cpu().argmax(axis=1)
                     
-                batch_accuracy = torch.sum(logits.cpu().argmax(axis=1) == labels)/(len(images)*256*256)
-                
-                step_dice_nominator = dice_nominator(y_true=labels_gpu,
-                                                    y_pred=torch.argmax(logits, dim=1),
-                                                    n_classes=args.number_of_classes)
-                step_dice_denominator = dice_denominator(y_true=labels_gpu,
-                                                    y_pred=torch.argmax(logits, dim=1),
-                                                    n_classes=args.number_of_classes)
-                
-                # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
-                epoch_dice_nominator += step_dice_nominator
-                epoch_dice_denominator += step_dice_denominator
+            step_dice_nominator, step_dice_denominator = log_step(phase=phase,   
+                                                                  metric_logger=metric_logger,
+                                                                  loss=loss,
+                                                                  logits_gpu=logits,
+                                                                  labels_gpu=labels_gpu,
+                                                                  images=images,
+                                                                  args=args)
             
-                step_dice, _ = dice_coef(dice_nominator=step_dice_nominator,
-                                        dice_denominator=step_dice_denominator,
-                                        n_classes=args.number_of_classes)
-            else:    
-                step_dice = 0
-                batch_accuracy = 0
-                
-            if phase == 'train':
-                metric_logger.update(train_pixel_accuracy=(batch_accuracy, len(images)),
-                                     train_loss=(loss.item(), len(images)),
-                                     train_step_dice=step_dice)
-            else:
-                metric_logger.update(vali_pixel_accuracy=(batch_accuracy, len(images)),
-                                     vali_loss=(loss.item(), len(images)),
-                                     vali_step_dice=step_dice)
+            # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
+            epoch_dice_nominator += step_dice_nominator
+            epoch_dice_denominator += step_dice_denominator
         
-        if args.log_details:
-            epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
-                                      dice_denominator=epoch_dice_denominator,
-                                      n_classes=args.number_of_classes)
-        else:
-            epoch_dice = 0 
-        
-        if phase == 'train':
-            metric_logger.update(train_dice_coef=epoch_dice)
-        else:
-            metric_logger.update(vali_dice_coef=epoch_dice)
-        
-        metric_logger.send_meters_to_tensorboard(step=epoch)
-        if args.log_details:
-            
-            viz.plot_samples(tag=f'samples/{phase}_patch_samples',
-                            images=sample_images,
-                            col_size=8,
-                            row_size=4,                       
-                            epoch=epoch)
-            
-            viz.plot_masks(tag=f'samples/{phase}_mask_samples',
-                        masks=sample_labels,
-                        label_handler=label_handler,
-                        col_size=8,
-                        row_size=4,                       
-                        epoch=epoch)
-            
-            viz.plot_masks(tag=f'samples/{phase}_pred_samples',
-                        masks=sample_preds,
-                        label_handler=label_handler,
-                        col_size=8,
-                        row_size=4,   
-                        epoch=epoch)
-            
+        #after epoch is finished:        
+        log_epoch(phase=phase,
+                  metric_logger=metric_logger, 
+                  viz=viz, 
+                  epoch_dice_nominator=epoch_dice_nominator,
+                  epoch_dice_denominator=epoch_dice_denominator,
+                  model=model,
+                  sample_images=sample_images,
+                  sample_labels=sample_labels,
+                  sample_preds=sample_preds,
+                  label_handler=label_handler,
+                  epoch=epoch,
+                  args=args)
+             
         print(f"Averaged {phase} stats:", metric_logger.global_str())
 
     if args.performance_metric == 'dice':

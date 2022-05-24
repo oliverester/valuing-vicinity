@@ -378,7 +378,7 @@ class HoldoutSet():
         self.train_loader = torch.utils.data.DataLoader(
             self.train_torch_dataset,
             batch_size=int(self.data_provider.batch_size),
-            shuffle=True,
+            shuffle=False,
             num_workers=self.data_provider.workers,
             pin_memory=True,
             drop_last=True, # important in train_loader because of batch norm

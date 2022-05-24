@@ -5,7 +5,7 @@ from src.exp_management import tracking
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 
 
-def initialize_logging(metric_logger, phase, num_heads):
+def initialize_logging(metric_logger, phase, num_heads=None):
     
     metric_logger.add_meter(f'{phase}_loss',
                                 tracking.SmoothedValue(window_size=1,
@@ -23,13 +23,14 @@ def initialize_logging(metric_logger, phase, num_heads):
                                                     type='global_avg',
                                                     to_tensorboard=False))
     # add attention logger per head
-    for i in range(num_heads):
-        metric_logger.add_meter(f'{phase}_ex_con_central_attention/head_{i}',
-                            tracking.SmoothedValue(window_size=1,
-                                                    type='global_avg'))
-        metric_logger.add_meter(f'{phase}_coeff_var_neighbour_attention/head_{i}',
-                            tracking.SmoothedValue(window_size=1,
-                                                    type='global_avg'))
+    if num_heads is not None:
+        for i in range(num_heads):
+            metric_logger.add_meter(f'{phase}_ex_con_central_attention/head_{i}',
+                                tracking.SmoothedValue(window_size=1,
+                                                        type='global_avg'))
+            metric_logger.add_meter(f'{phase}_coeff_var_neighbour_attention/head_{i}',
+                                tracking.SmoothedValue(window_size=1,
+                                                        type='global_avg'))
 
 
 def log_step(phase,
@@ -37,10 +38,11 @@ def log_step(phase,
              loss,
              logits_gpu,
              labels_gpu, 
-             attention_gpu,
              images,
-             neighbour_masks,
-             args):
+             args,
+             attention_gpu=None,
+             neighbour_masks=None
+             ):
     
     if args.log_details:  
         labels_gpu.detach()
@@ -135,13 +137,10 @@ def log_epoch(phase,
               label_handler,
               epoch,
               args): 
-    #if args.log_details:
     epoch_dice, _ = dice_coef(dice_nominator=epoch_dice_nominator,
                               dice_denominator=epoch_dice_denominator,
                               n_classes=args.number_of_classes)
-    # else:
-    #     epoch_dice = 0
-        
+
     if phase == 'train':
         metric_logger.update(train_dice_coef=epoch_dice)
     else:
