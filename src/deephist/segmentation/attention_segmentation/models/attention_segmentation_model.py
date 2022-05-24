@@ -43,6 +43,8 @@ class AttentionSegmentationModel(torch.nn.Module):
         self.use_transformer = use_transformer
         
         if self.attention_on:
+            self.block_memory = False # option to skip memory attention in forward-pass
+            
             self.kernel_size = k*2+1
             
             if not self.use_central_attention and not self.use_transformer:
@@ -116,6 +118,9 @@ class AttentionSegmentationModel(torch.nn.Module):
         Args:
             data_loader (torch.utils.data.dataloader.DataLoader): DataLoader
         """
+        if self.block_memory:
+            raise Exception("Memory is blocked. If you really want to fill memory, set 'block_memory' to False")
+        
         #reset memory first to ensure consistency
         self.memory._reset()
         
@@ -151,8 +156,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                 images: torch.Tensor, 
                 neighbours_idx: torch.Tensor = None,
                 neighbour_imgs: torch.Tensor = None,
-                return_embeddings: bool = False,
-                block_memory: bool = False):
+                return_embeddings: bool = False):
         """ 
         Attention segmentation model:
         If return_embeddings is True, only images must be provided and the model returns the compressed
@@ -179,7 +183,7 @@ class AttentionSegmentationModel(torch.nn.Module):
         # segmentation encoder
         features = self.base_model.encoder(images)
         
-        if self.attention_on and not block_memory:
+        if self.attention_on and not self.block_memory:
             # add context to deepest feature maps feat_l by attending neighbourhood embeddings
             encoder_map = features[-1]
             

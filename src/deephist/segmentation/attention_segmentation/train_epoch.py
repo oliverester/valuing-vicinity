@@ -83,19 +83,21 @@ def train_epoch(exp: Experiment,
         # then, fill embedding memory
         if epoch > 0:
             # initialize patch memory for train/val set
+            model.block_memory = False
             model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
             model.fill_memory(data_loader=big_data_loader, gpu=args.gpu)
-                 
+        else:
+            model.block_memory = True # block to not query it in first epoch
+            
         for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
                 neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
-           
+
                 logits, attention, k_neighbour_mask = model(images=images_gpu,
-                                                            neighbours_idx=neighbours_idx,
-                                                            block_memory=not(epoch > 0)
+                                                            neighbours_idx=neighbours_idx
                                                             )         
 
             if args.combine_criterion_after_epoch is not None:

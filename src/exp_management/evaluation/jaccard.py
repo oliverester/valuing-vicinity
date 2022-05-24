@@ -56,7 +56,7 @@ def jaccard_nominator(y_true: torch.Tensor,
     y_true_oh = one_hot(y_true, num_classes=n_classes)[..., selected_classes]
     y_pred_oh = one_hot(y_pred, num_classes=n_classes)[..., selected_classes]
     intersect = torch.sum(y_true_oh * y_pred_oh, dim=[-2,-3]) # sum over x,y image dim
-    jaccard_nominator_per_classes = torch.mean(1. * intersect, dim=0)
+    jaccard_nominator_per_classes = torch.sum(1. * intersect, dim=0)
     return jaccard_nominator_per_classes
 
 def jaccard_denominator(y_true: torch.Tensor,
@@ -86,6 +86,6 @@ def jaccard_denominator(y_true: torch.Tensor,
     y_pred_oh = one_hot(y_pred, num_classes=n_classes)[..., selected_classes]
     # union = set1 + set2 - intersect(set1, set2)
     denom = torch.sum(y_true_oh + y_pred_oh, dim=[-2,-3]) - torch.sum(y_true_oh * y_pred_oh, dim=[-2,-3]) # sum over x,y image dim
-    dice_denominator_per_classes = torch.mean(denom.double(), dim=0) # no mean for ints
+    dice_denominator_per_classes = torch.sum(denom.double(), dim=0) # no mean for ints
     return dice_denominator_per_classes
 

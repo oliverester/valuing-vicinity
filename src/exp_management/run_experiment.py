@@ -308,7 +308,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                            writer=writer,
                            epoch=epoch,
                            log_metrics=True,
-                           tag='train')
+                           tag='sample_train' if exp.args.n_eval_wsis else 'train')
 
             evaluate_model(exp=exp,
                            model=model,
@@ -316,7 +316,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                            writer=writer,
                            epoch=epoch,
                            log_metrics=True,
-                           tag='vali')
+                           tag='sample_vali' if exp.args.n_eval_wsis else 'vali')
 
 
 def evaluate_model(exp: Experiment,

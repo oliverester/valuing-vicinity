@@ -318,8 +318,8 @@ class SegmentationExperiment(MLExperiment):
                     wsi_dice_nominator += delta_dice_nominator
                     
                     delta_dice_denominator = dice_denominator(y_true=mask_batch,
-                                                             y_pred=mask_pred_batch,
-                                                             n_classes=data_provider.number_classes)
+                                                              y_pred=mask_pred_batch,
+                                                              n_classes=data_provider.number_classes)
                     total_dice_denominator += delta_dice_denominator
                     wsi_dice_denominator += delta_dice_denominator
                     
