@@ -277,7 +277,8 @@ class Visualizer():
                                 image_samples,
                                 epoch)
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
 
 
     def compare_images(self,
@@ -317,7 +318,8 @@ class Visualizer():
             self.writer.add_images(tag + " Tensor 2", image_samples2, epoch)
             
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
 
         
     def plot_position_embeddings(self,
@@ -379,7 +381,8 @@ class Visualizer():
                 self.writer.add_figure(tag, fig, epoch)
                 
             if self.save_to_folder:
-                raise Exception("Not implemented yet.")
+                None
+                #raise Exception("Not implemented yet.")
 
 
     def plot_tsne(self,
@@ -414,7 +417,8 @@ class Visualizer():
             self.writer.add_figure(tag, tsne_fig, epoch)
             
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
 
     def plot_samples(self,
                      tag: str,
@@ -449,7 +453,8 @@ class Visualizer():
             self.writer.add_figure(tag, fig, epoch)
         
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
 
     def plot_masks(
         self,
@@ -491,7 +496,8 @@ class Visualizer():
             self.writer.add_image(tag, conf_matrix_img, epoch)
             
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
     
     def roc_auc(self,
                 tag,
@@ -510,7 +516,8 @@ class Visualizer():
                 self.writer.add_image(tag, roc_img_array, epoch)
             
             if self.save_to_folder:
-                raise Exception("Not implemented yet.")
+                None
+                #raise Exception("Not implemented yet.")
 
     def probability_hist(self,
                          tag,
@@ -529,7 +536,8 @@ class Visualizer():
             self.writer.add_image(tag, prob_his_img_array, epoch)
         
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
         
     def score_hist(self,
                    tag,
@@ -548,7 +556,8 @@ class Visualizer():
             self.writer.add_image(tag, score_img_array, epoch)
         
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
         
     def score_2dhist(self,
                      tag,
@@ -572,7 +581,8 @@ class Visualizer():
             self.writer.add_image(tag, score_img_array, epoch)
         
         if self.save_to_folder:
-            raise Exception("Not implemented yet.")
+            None
+            #raise Exception("Not implemented yet.")
     
     def plot_wsi_section(self,
                          section: np.ndarray,

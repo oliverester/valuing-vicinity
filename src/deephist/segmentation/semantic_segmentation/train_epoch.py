@@ -43,13 +43,13 @@ def train_epoch(exp: Experiment,
     Returns:
         float: Average validation loss after training step
     """
-    metric_logger = tracking.MetricLogger(delimiter="  ",
-                                          tensorboard_writer=writer,
-                                          args=args)
-
-    viz = tracking.Visualizer(writer=writer)
-
+    
     for phase in ['train', 'vali']:
+        
+        viz = tracking.Visualizer(writer=writer)
+        metric_logger = tracking.MetricLogger(delimiter="  ",
+                                              tensorboard_writer=writer,
+                                              args=args)
         
         initialize_logging(metric_logger=metric_logger,
                         phase=phase)
