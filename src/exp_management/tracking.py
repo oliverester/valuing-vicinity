@@ -35,7 +35,10 @@ class SmoothedValue(object):
     @ heavily adapted from up-detr
     """
 
-    def __init__(self, window_size=20, to_tensorboard=True,type='avg'):
+    def __init__(self, 
+                 window_size=20, 
+                 to_tensorboard=True,
+                 type='avg'):
 
         self.deque = deque(maxlen=window_size)
         self.total = 0.0
@@ -47,20 +50,6 @@ class SmoothedValue(object):
         self.deque.append(value)
         self.count += n
         self.total += value * n
-
-    def synchronize_between_processes(self):
-        """
-        Warning: does not synchronize the deque!
-        Warning OE: can only be called once. After that global avg might be compromised due to multiple "sum-reduces"
-        """
-        if not is_dist_avail_and_initialized():
-            return
-        t = torch.tensor([self.count, self.total], dtype=torch.float64, device='cuda')
-        dist.barrier()
-        dist.all_reduce(t)
-        t = t.tolist()
-        self.count = int(t[0])
-        self.total = t[1]
 
     @property
     def median(self):
@@ -93,21 +82,6 @@ class SmoothedValue(object):
 
     def __str__(self):
         return f"{self.type}: {round(getattr(self, self.type),2)}"
-        # return self.fmt.format(
-        #     median=self.median,
-        #     avg=self.avg,
-        #     global_avg=self.global_avg,
-        #     max=self.max,
-        #     value=self.value)
-
-
-def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-    if not dist.is_initialized():
-        return False
-    return True
-
 
 
 class MetricLogger(object):
@@ -120,11 +94,6 @@ class MetricLogger(object):
         self.tensorboard_writer = tensorboard_writer
         self.args = args
         
-        if 'multiprocessing_distributed' in args and args.multiprocessing_distributed is True:
-            self.multiprocessing_distributed = True 
-        else:
-            self.multiprocessing_distributed = False
-
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
@@ -174,10 +143,6 @@ class MetricLogger(object):
             )
         return self.delimiter.join(loss_str)
 
-    def synchronize_between_processes(self):
-        for meter in self.meters.values():
-            meter.synchronize_between_processes()
-
     def add_meter(self, name, meter):
         self.meters[name] = meter
 
@@ -188,13 +153,18 @@ class MetricLogger(object):
         for name, meter in self.meters.items():
             if meter.to_tensorboard:
                 if meter.global_avg is not None:
-                    name = name.replace("_slash_", "/")
+                    name = name.replace("_slash_", "/") # hack to handle subgrouping in tensorboard
                     self.tensorboard_writer.add_scalar(tag=name,
-                                            scalar_value=meter.global_avg,
-                                            global_step=step)
+                                                       scalar_value=meter.global_avg,
+                                                       global_step=step)
 
 
-    def log_every(self, iterable, print_freq, epoch=None, header=None, phase='train'):
+    def log_every(self, 
+                  iterable, 
+                  print_freq,
+                  epoch=None, 
+                  header=None, 
+                  phase='train'):
         
         if len(iterable) == 0:
             raise Exception("Zero iterations in dataloader: probably drop_last = True and n_samples < batch_size")
@@ -233,6 +203,7 @@ class MetricLogger(object):
             data_time.update(time.time() - end)
             yield obj
             iter_time.update(time.time() - end)
+            # print every print_freq steps
             if i % print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
@@ -249,6 +220,7 @@ class MetricLogger(object):
                         time=str(iter_time), data=str(data_time)))
             i += 1
             end = time.time()
+            
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print('{} Total time: {} ({:.4f} s / it)'.format(
@@ -257,13 +229,7 @@ class MetricLogger(object):
             self.update(total_time_train=total_time)
         elif phase == 'vali':
             self.update(total_time_vali=total_time)
-        # here: collect all meters from each gpu and sychronize before sending to tensorboard.
-        self.synchronize_between_processes()
-        if self.multiprocessing_distributed:
-            if self.args.gpu == 0:
-                self.send_meters_to_tensorboard(step=epoch)
-        else:
-            self.send_meters_to_tensorboard(step=epoch)
+        self.send_meters_to_tensorboard(step=epoch)
 
 
 class Visualizer():
@@ -311,13 +277,12 @@ class Visualizer():
                                 image_samples,
                                 epoch)
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
 
 
     def compare_images(self,
                     image_tensor1,
                     image_tensor2,
-                    label_tensor=None,
                     tag=None,
                     sample_size=None,
                     epoch=None):
@@ -352,7 +317,8 @@ class Visualizer():
             self.writer.add_images(tag + " Tensor 2", image_samples2, epoch)
             
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
+
         
     def plot_position_embeddings(self,
                                  tag,
@@ -413,7 +379,7 @@ class Visualizer():
                 self.writer.add_figure(tag, fig, epoch)
                 
             if self.save_to_folder:
-                pass
+                raise Exception("Not implemented yet.")
 
 
     def plot_tsne(self,
@@ -448,8 +414,7 @@ class Visualizer():
             self.writer.add_figure(tag, tsne_fig, epoch)
             
         if self.save_to_folder:
-            pass
-
+            raise Exception("Not implemented yet.")
 
     def plot_samples(self,
                      tag: str,
@@ -484,7 +449,7 @@ class Visualizer():
             self.writer.add_figure(tag, fig, epoch)
         
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
 
     def plot_masks(
         self,
@@ -526,8 +491,8 @@ class Visualizer():
             self.writer.add_image(tag, conf_matrix_img, epoch)
             
         if self.save_to_folder:
-            pass
-        
+            raise Exception("Not implemented yet.")
+    
     def roc_auc(self,
                 tag,
                 predictions,
@@ -545,7 +510,7 @@ class Visualizer():
                 self.writer.add_image(tag, roc_img_array, epoch)
             
             if self.save_to_folder:
-                pass
+                raise Exception("Not implemented yet.")
 
     def probability_hist(self,
                          tag,
@@ -564,7 +529,7 @@ class Visualizer():
             self.writer.add_image(tag, prob_his_img_array, epoch)
         
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
         
     def score_hist(self,
                    tag,
@@ -583,7 +548,7 @@ class Visualizer():
             self.writer.add_image(tag, score_img_array, epoch)
         
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
         
     def score_2dhist(self,
                      tag,
@@ -607,7 +572,7 @@ class Visualizer():
             self.writer.add_image(tag, score_img_array, epoch)
         
         if self.save_to_folder:
-            pass
+            raise Exception("Not implemented yet.")
     
     def plot_wsi_section(self,
                          section: np.ndarray,
@@ -621,7 +586,6 @@ class Visualizer():
         
         assert(mode in ['gt', 'pred', 'org'])
         
-       
         # 1. plot groundtruth
         
         # determine output size via array size * patch size

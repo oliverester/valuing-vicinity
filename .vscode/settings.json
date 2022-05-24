@@ -6,7 +6,7 @@
         "-s",
         "./tests",
         "-p",
-        "*test*.py"
+        "*test.py"
     ],
     "jupyter.jupyterServerType": "local",
     "files.watcherExclude": {

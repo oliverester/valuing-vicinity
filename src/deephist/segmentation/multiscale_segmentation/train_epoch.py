@@ -14,7 +14,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.deephist.segmentation.attention_segmentation.logging import initialize_logging, log_epoch, log_step
 from src.exp_management import tracking
-from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import HoldoutSet
 from src.pytorch_datasets.label_handler import LabelHandler

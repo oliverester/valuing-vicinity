@@ -106,9 +106,6 @@ class AttentionSegmentationModel(torch.nn.Module):
                 print("Initializing eval memory")
                 val_memory = Memory(**memory_params, is_eval=True, gpu=gpu)
                 super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
-                
-        # sync training-mode for new module
-        
 
     def fill_memory(self, 
                     data_loader: torch.utils.data.dataloader.DataLoader,

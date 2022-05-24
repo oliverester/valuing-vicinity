@@ -56,7 +56,7 @@ def dice_nominator(y_true: torch.Tensor,
     y_true_oh = one_hot(y_true, num_classes=n_classes)[..., selected_classes]
     y_pred_oh = one_hot(y_pred, num_classes=n_classes)[..., selected_classes]
     intersect = torch.sum(y_true_oh * y_pred_oh, dim=[-2,-3]) # sum over x,y image dim
-    dice_nominator_per_classes = torch.mean(2. * intersect, dim=0)
+    dice_nominator_per_classes = torch.sum(2. * intersect, dim=0)
     return dice_nominator_per_classes
 
 def dice_denominator(y_true: torch.Tensor,
@@ -85,6 +85,6 @@ def dice_denominator(y_true: torch.Tensor,
     y_true_oh = one_hot(y_true, num_classes=n_classes)[..., selected_classes]
     y_pred_oh = one_hot(y_pred, num_classes=n_classes)[..., selected_classes]
     denom = torch.sum(y_true_oh + y_pred_oh, dim=[-2,-3]) # sum over x,y image dim
-    dice_denominator_per_classes = torch.mean(denom.double(), dim=0) # no mean for ints
+    dice_denominator_per_classes = torch.sum(denom.double(), dim=0) # no mean for ints
     return dice_denominator_per_classes
 

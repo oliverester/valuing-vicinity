@@ -1,10 +1,7 @@
 
-from pathlib import Path
 
 import torch
 from src.deephist.segmentation.attention_segmentation.attention_inference import memory_inference
-from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
-from src.exp_management.run_experiment import reload_model
 from src.exp_management.tracking import Visualizer
 
 def evaluate_details(patch_coordinates,
