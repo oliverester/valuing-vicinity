@@ -46,7 +46,12 @@ def train_epoch_online(exp: Experiment,
     """
     
     for phase in ['train', 'vali']:
-
+   
+        metric_logger = tracking.MetricLogger(delimiter="  ",
+                                              tensorboard_writer=writer,
+                                              args=args)
+        viz = tracking.Visualizer(writer=writer)
+        
         if phase == 'train':
             data_loader = holdout_set.train_loader
             # for fast embedding inference
@@ -55,12 +60,6 @@ def train_epoch_online(exp: Experiment,
             data_loader = holdout_set.vali_loader
             wsi_dataset= holdout_set.vali_wsi_dataset
 
-        
-        metric_logger = tracking.MetricLogger(delimiter="  ",
-                                              tensorboard_writer=writer,
-                                              args=args)
-        viz = tracking.Visualizer(writer=writer)
-        
         initialize_logging(metric_logger=metric_logger,
                            phase=phase,
                            num_heads=args.num_attention_heads)
@@ -81,13 +80,6 @@ def train_epoch_online(exp: Experiment,
         sample_labels = None
         sample_preds = None
         
-        # get memory of dataset
-        memory = wsi_dataset.embedding_memory
-        
-        if args.memory_to_gpu is True:
-            memory.to_gpu(args.gpu)
-             
-    
         for images, labels, neighbour_imgs, neighbour_mask in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
@@ -112,14 +104,14 @@ def train_epoch_online(exp: Experiment,
                 optimizer.step()
                                             
             step_dice_nominator, step_dice_denominator = log_step(phase=phase,   
-                                                                metric_logger=metric_logger,
-                                                                loss=loss,
-                                                                logits_gpu=logits,
-                                                                labels_gpu=labels_gpu,
-                                                                images=images,
-                                                                attention_gpu=attention, 
-                                                                neighbour_masks=neighbour_mask_gpu,
-                                                                args=args)
+                                                                  metric_logger=metric_logger,
+                                                                  loss=loss,
+                                                                  logits_gpu=logits,
+                                                                  labels_gpu=labels_gpu,
+                                                                  images=images,
+                                                                  attention_gpu=attention, 
+                                                                  neighbour_masks=neighbour_mask_gpu,
+                                                                  args=args)
             
             # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
             epoch_dice_nominator += step_dice_nominator
@@ -132,17 +124,17 @@ def train_epoch_online(exp: Experiment,
                 
         #after epoch is finished:        
         log_epoch(phase=phase,
-                    metric_logger=metric_logger, 
-                    viz=viz, 
-                    epoch_dice_nominator=epoch_dice_nominator,
-                    epoch_dice_denominator=epoch_dice_denominator,
-                    model=model,
-                    sample_images=sample_images,
-                    sample_labels=sample_labels,
-                    sample_preds=sample_preds,
-                    label_handler=label_handler,
-                    epoch=epoch,
-                    args=args)
+                  metric_logger=metric_logger, 
+                  viz=viz, 
+                  epoch_dice_nominator=epoch_dice_nominator,
+                  epoch_dice_denominator=epoch_dice_denominator,
+                  model=model,
+                  sample_images=sample_images,
+                  sample_labels=sample_labels,
+                  sample_preds=sample_preds,
+                  label_handler=label_handler,
+                  epoch=epoch, 
+                  args=args)
             
         print(f"Averaged {phase} stats:", metric_logger.global_str())
 

@@ -9,23 +9,25 @@ from src.deephist.segmentation.attention_segmentation.models.position_encoding i
 class MultiheadAttention(nn.Module):
 
     def __init__(self, 
-                 input_dim, 
-                 hidden_dim, 
-                 num_heads, 
-                 kernel_size, 
-                 use_ln=False, 
-                 use_pos_encoding=False,
-                 learn_pos_encoding=False):
+                 input_dim: int, 
+                 hidden_dim: int, 
+                 num_heads: int, 
+                 kernel_size: int, 
+                 use_ln: bool =False, 
+                 use_pos_encoding: bool =False,
+                 learn_pos_encoding: bool =False,
+                 dropout: float = 0.):
         """_summary_
 
         Args:
-            input_dim (_type_): Dimension of patch embeddings
-            hidden_dim (_type_): Hidden dimension of internal representation (over all heads).
-            num_heads (_type_): Number of heads
-            kernel_size (_type_): Neighbourhood length
+            input_dim (int): Dimension of patch embeddings
+            hidden_dim (int): Hidden dimension of internal representation (over all heads).
+            num_heads (int): Number of heads
+            kernel_size (int): Neighbourhood length
             use_ln (bool, optional): Use layer normalization for k, q, v. Defaults to False.
             use_pos_encoding (bool, optional): Use sinusiodal position encoding. Defaults to False.
             learn_pos_encoding (bool, optional): Use learnable 2-d position embeddings. Defaults to False.
+            dropout (float): Set attention dropout after softmax. Default to 0.
         """
         super().__init__()
         assert hidden_dim % num_heads == 0, "Embedding dimension must be 0 modulo number of heads."
@@ -57,7 +59,9 @@ class MultiheadAttention(nn.Module):
         else: 
             self.pos_enc = PositionalEncoding(d_hid=hidden_dim // num_heads,
                                               n_position=kernel_size*kernel_size)
-            
+        
+        self.dropout = nn.Dropout(p=dropout)
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -97,7 +101,7 @@ class MultiheadAttention(nn.Module):
                k = self.pos_enc(k)
             
         # Determine value outputs
-        values, attention = scaled_dot_product(q, k, v, mask=mask)
+        values, attention = self.scaled_dot_product(q, k, v, mask=mask)
         values = values.permute(0, 2, 1, 3) # [Batch, SeqLen, Head, Dims]
         values = values.reshape(batch_size, 1, hidden_dim)
         o = self.o_proj(values)
@@ -107,13 +111,14 @@ class MultiheadAttention(nn.Module):
         else:
             return o
         
-        
-def scaled_dot_product(q, k, v, mask=None):
-    d_k = q.size()[-1]
-    attn_logits = torch.matmul(q, k.transpose(-2, -1))
-    attn_logits = attn_logits / math.sqrt(d_k)
-    if mask is not None:
-        attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
-    attention = F.softmax(attn_logits, dim=-1)
-    values = torch.matmul(attention, v)
-    return values, attention
+            
+    def scaled_dot_product(self, q, k, v, mask=None):
+        d_k = q.size()[-1]
+        attn_logits = torch.matmul(q, k.transpose(-2, -1))
+        attn_logits = attn_logits / math.sqrt(d_k)
+        if mask is not None:
+            attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
+        attention = F.softmax(attn_logits, dim=-1)
+        attention = self.dropout(attention)
+        values = torch.matmul(attention, v)
+        return values, attention

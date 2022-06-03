@@ -1,11 +1,11 @@
-arch: deeplabv3
+arch: unet
 encoder: resnet50
 gpu: 0
 workers: 8
 nfold: 5
 batch-size: 32
 val-batch-size: 512
-epochs: 50
+epochs: 200
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
 patch-label-type: mask
@@ -17,7 +17,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_sem_seg/d16_deeplab_loss
+logdir: logdir_sem_seg/d16_unet
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5

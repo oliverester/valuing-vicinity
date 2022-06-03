@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 1
+gpu: 3
 workers: 8
 nfold: 5
 batch-size: 32
@@ -17,8 +17,8 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_sem_seg/a_d16_k8_deeplab
-evaluate-every: 2
+logdir: logdir_sem_seg/a_d16_k8_deeplab_loss
+evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5
 early-stopping-epochs: 10
@@ -36,5 +36,5 @@ use-self-attention: false
 log-details: true
 memory-to-gpu: true
 seed: 13
-performance-metric: dice
+performance-metric: loss
 attention-on : true

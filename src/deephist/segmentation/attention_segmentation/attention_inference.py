@@ -1,3 +1,4 @@
+import warnings
 import torch
 from torch import nn
 
@@ -25,6 +26,8 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
         if not model.block_memory:
             model.initialize_memory(**data_loader.dataset.wsi_dataset.meta_data['memory'], gpu=gpu)
             model.fill_memory(data_loader=data_loader, gpu=gpu)
+        else:
+            warnings.warn("Attention inference but memory is blocked")
             
         outputs, labels, attentions, n_masks = memory_inference(data_loader=data_loader,
                                                                 model=model,

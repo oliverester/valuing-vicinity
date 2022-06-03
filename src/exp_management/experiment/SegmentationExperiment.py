@@ -292,11 +292,12 @@ class SegmentationExperiment(MLExperiment):
             
             patch_counter = 0
             
-            with wsi.inference_mode():
+            with wsi.inference_mode(): # too loop over all patches
                 patches = wsi.get_patches()
                 print(f"Inference for WSI {wsi.name}")       
                 wsi_loader = data_provider.get_wsi_loader(wsi=wsi)
                 
+                # returns list of batches
                 mask_predictions, masks = inference_fun(wsi_loader,
                                                         model,
                                                         gpu,
@@ -322,7 +323,6 @@ class SegmentationExperiment(MLExperiment):
                                                               n_classes=data_provider.number_classes)
                     total_dice_denominator += delta_dice_denominator
                     wsi_dice_denominator += delta_dice_denominator
-                    
                     
                     # jaccard index
                     wsi_jaccard_nominator += jaccard_nominator(y_true=mask_batch,

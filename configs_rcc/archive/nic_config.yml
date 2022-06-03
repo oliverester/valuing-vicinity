@@ -1,6 +1,0 @@
-a: resnet50
-gpu: 0
-test-data: data/preprocessed/HEEL_test
-model-path: /homes/oester/repositories/deephist/logdir/simsiam/simsiam_model-2021-10-18_12_35_50
-checkpoint: checkpoint_0099.pth.tar
-log-dir: logdir

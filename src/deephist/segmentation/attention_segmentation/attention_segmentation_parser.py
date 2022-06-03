@@ -81,6 +81,8 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--nfold', default=None, type=int,
                             help='Select the number of cv folds. If nfold is set - '
                             'val_ratio will be ignored.')
+        parser.add_argument('-folds', default=None, nargs="*", type=int,
+                            help='Select folds to run specifically. If None, runs all folds. Default None')
         parser.add_argument('--draw-patches-per-class', default=None, type=int,
                             help='Select a number how many patches shell be drawn from each WSI per class.'
                                 'If number exceeds existing patches per class in one wsi,'

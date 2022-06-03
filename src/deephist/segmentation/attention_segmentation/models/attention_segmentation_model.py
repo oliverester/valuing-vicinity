@@ -63,6 +63,8 @@ class AttentionSegmentationModel(torch.nn.Module):
             # f_emb
             self.pooling = nn.AdaptiveAvgPool2d(1)
             # number of feature maps of encoder output: e.g. 2048 for U-net 5 layers 
+            self.drop_out = nn.Dropout(p=emb_dropout)
+            
             self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
             
             # f_fuse
@@ -86,7 +88,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               kernel_size= self.kernel_size,
                                               use_ln=use_ln,
                                               use_pos_encoding=use_pos_encoding,
-                                              learn_pos_encoding=learn_pos_encoding)
+                                              learn_pos_encoding=learn_pos_encoding,
+                                              dropout=dropout)
                 
     def initialize_memory(self,
                           gpu: int,
@@ -190,7 +193,8 @@ class AttentionSegmentationModel(torch.nn.Module):
             # f_emb:
             # pool feature maps + linear proj to patch emb
             pooled = self.pooling(encoder_map)
-            embeddings = self.lin_proj(pooled.flatten(1))
+            pooled_flatten = self.drop_out(pooled.flatten(1))
+            embeddings = self.lin_proj(pooled_flatten)
             
             # sanity check
             assert not torch.any(torch.max(embeddings, dim=1)[0] == 0), "Embeddings must have values."
@@ -233,13 +237,13 @@ class AttentionSegmentationModel(torch.nn.Module):
                     c_pos = (self.kernel_size*self.kernel_size-1)//2
                     neighbour_embeddings[:,c_pos:(c_pos+1),:] = embeddings
                     attended_embeddings, attention = self.transformer(x=neighbour_embeddings,
-                                                                        mask=k_neighbour_masks,
-                                                                        return_attention=True) 
+                                                                      mask=k_neighbour_masks,
+                                                                      return_attention=True) 
                 else: #MHA
                     attended_embeddings, attention =  self.msa(q=embeddings,
-                                                                kv=neighbour_embeddings,
-                                                                mask=k_neighbour_masks,
-                                                                return_attention=True)
+                                                               kv=neighbour_embeddings,
+                                                               mask=k_neighbour_masks,
+                                                               return_attention=True)
                 # f_fuse:
                 # concatinate attended embeddings to encoded features      
                 attended_embeddings = torch.squeeze(attended_embeddings, 1)

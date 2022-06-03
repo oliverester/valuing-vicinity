@@ -79,7 +79,11 @@ def run_kfold_model(cv_set: CvSet,
                                     start_method='spawn')
     else:
         for fold_no in range(exp.args.nfold):
-            #fold_exp = copy.deepcopy(exp)
+            if exp.args.folds is not None:
+                # check fold is defined:
+                if fold_no not in exp.args.folds:
+                    # jump to next fold
+                    continue
             holdout_set = cv_set.holdout_sets[fold_no]
             
             # settings for folds
