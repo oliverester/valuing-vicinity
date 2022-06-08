@@ -49,6 +49,7 @@ class Experiment(metaclass=ABCMeta):
         if 'logdir' in self.args and not testmode:
             
             self.args.logdir = str(Path(self.args.logdir) / self.model_name)
+                
             self.set_log_path(log_path=Path(self.args.logdir))
             
         if self.args.seed is not None:  

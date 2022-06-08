@@ -151,7 +151,7 @@ class AttentionSegmentationModel(torch.nn.Module):
             return self.train_memory
         else:
             if not hasattr(self, 'val_memory'):
-                raise Exception("""Train Memory is not initialized yet. Please use the initialize_memory 
+                raise Exception("""Validation Memory is not initialized yet. Please use the initialize_memory 
                 function of the AttentionSegmentationModel and specify the required dimensions""")
             return self.val_memory
         

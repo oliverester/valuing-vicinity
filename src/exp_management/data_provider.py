@@ -157,7 +157,12 @@ class DataProvider():
             self.holdout_set = self._set_holdout_set()
             self.train_set = self._set_train_set()
             self.cv_set = self._set_cv_set()
-
+            
+        # on inference use test_data
+        elif self.exp.args.test_data is not None:
+            self.test_wsi_dataset = self._set_test_wsis()
+        else:
+            raise Exception("Please provide a test_data path to do inference on.")
         
         if patch_label_type in ['patch', 'distribution']:
             self.label_handler = self.patch_label_handler
@@ -282,7 +287,7 @@ class DataProvider():
             print(f"Train Data set length {len(train_dataset)}")
             train_loader = torch.utils.data.DataLoader(train_dataset,
                                                        batch_size=int(self.batch_size),
-                                                       shuffle=False, #(train_sampler is None),
+                                                       shuffle=True, #(train_sampler is None),
                                                        num_workers=self.workers,
                                                        pin_memory=True,
                                                        sampler=train_sampler,

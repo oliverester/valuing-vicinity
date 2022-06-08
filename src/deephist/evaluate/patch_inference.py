@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict
 
 import src.deephist.evaluate.evaluate_attention as att
-import deephist.evaluate.evaluate_multiscale as ms
+import src.deephist.evaluate.evaluate_multiscale as ms
 import src.deephist.evaluate.evaluate_baseline as bs
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.run_experiment import reload_model
@@ -21,21 +21,27 @@ def run_patch_inference(exp: Experiment,
     """
 
     model = exp.get_model()
-    reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder
-    
-    reload_model(model=model,
-                 model_path=reload_from,
-                 gpu=exp.args.gpu)
-    
-    if exp.args.attention_on:
-        eval = att.evaluate_details
-    elif exp.args.multiscale_on:
-        eval = ms.evaluate_details
-    else:
-        eval = bs.evaluate_details
-        
-    eval(patch_coordinates=patch_coordinates,
-         include_k = k,
-         exp=exp, 
-         model=model, 
-         wsis=exp.data_provider.test_wsi_dataset.wsis)
+    if exp.args.folds is not None:
+        for fold in exp.args.folds:
+            print(f"Inference for fold {fold}")
+            reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder / f"fold_{fold}"
+            exp.args.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
+            
+            reload_model(model=model,
+                        model_path=reload_from,
+                        gpu=exp.args.gpu)
+            
+            if exp.args.attention_on:
+                eval = att.evaluate_details
+            elif exp.args.multiscale_on:
+                eval = ms.evaluate_details
+            else:
+                eval = bs.evaluate_details
+            
+            #todo handle cv models
+            
+            eval(patch_coordinates=patch_coordinates,
+                include_k = k,
+                exp=exp, 
+                model=model, 
+                wsis=exp.data_provider.test_wsi_dataset.wsis)

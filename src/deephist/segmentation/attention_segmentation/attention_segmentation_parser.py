@@ -81,7 +81,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--nfold', default=None, type=int,
                             help='Select the number of cv folds. If nfold is set - '
                             'val_ratio will be ignored.')
-        parser.add_argument('-folds', default=None, nargs="*", type=int,
+        parser.add_argument('--folds', default=None, nargs="*", type=int,
                             help='Select folds to run specifically. If None, runs all folds. Default None')
         parser.add_argument('--draw-patches-per-class', default=None, type=int,
                             help='Select a number how many patches shell be drawn from each WSI per class.'
@@ -112,6 +112,8 @@ class AttentionSegmentationConfig(Config):
                             help='Select a loss function. If None, uses CrossEntropy')
         parser.add_argument('--use-ce-weights', action='store_true',
                             help='Set to use ce weights.')
+        parser.add_argument('--combine-weight', type=float, default=0.5,
+                            help='Loss combination weight.')
         parser.add_argument('--combine-criterion-after-epoch', default=None, type=int,
                             help='Select epoch after which to start combining a combined criterion.')
         parser.add_argument('--alpha', type=float, default=0.5,
@@ -120,8 +122,6 @@ class AttentionSegmentationConfig(Config):
                             help='Loss beta param')
         parser.add_argument('--gamma', type=float, default=1,
                             help='Loss gamma param')
-        parser.add_argument('--combine-weight', type=float, default=0.5,
-                            help='Loss combination weight.')
         parser.add_argument('--weight-decay', type=float, default=0,
                             help='Select weight decay for l2 regularization')
         parser.add_argument('--normalize', action='store_true',

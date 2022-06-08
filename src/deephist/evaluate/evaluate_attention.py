@@ -12,20 +12,22 @@ def evaluate_details(patch_coordinates,
     
         viz = Visualizer(save_to_folder=True)
 
+        model.eval()
         for wsi_name, patch_coordinates in patch_coordinates.items():
             # select WSI from wsis
             try:
                 selected_wsi = [wsi for wsi in wsis if wsi.name == wsi_name][0]
             except Exception as e:
-                print(f"Warning: Cannot find WSI {wsi_name}. Contueing")
+                print(f"Warning: Cannot find WSI {wsi_name}. Continuing")
                 continue
             # build memory on that WSI
             with selected_wsi.inference_mode(): # initializes memory
                 print("Building memory")
                 wsi_loader = exp.data_provider.get_wsi_loader(wsi=selected_wsi)
-                with model.eval():
-                    model.initialize_memory(**selected_wsi.meta_data['memory'], gpu=exp.args.gpu)
-                    model.fill_memory(data_loader=wsi_loader, gpu=exp.args.gpu)
+                
+                # fill memory
+                model.initialize_memory(**selected_wsi.meta_data['memory'], gpu=exp.args.gpu)
+                model.fill_memory(data_loader=wsi_loader, gpu=exp.args.gpu)
                     
                 # select patches 
                 for x, y in patch_coordinates:
@@ -59,13 +61,13 @@ def evaluate_details(patch_coordinates,
                     # gt
                     viz.plot_wsi_section(section=context_patches,
                                         mode='gt',
-                                        log_path=exp.args.logdir)
+                                        log_path=exp.args.log_path)
                     # pred
                     viz.plot_wsi_section(section=context_patches,
                                         mode='pred',
-                                        log_path=exp.args.logdir)
+                                        log_path=exp.args.log_path)
                     # att + gt
                     viz.plot_wsi_section(section=context_patches,
                                         mode='gt',
                                         attention=True,
-                                        log_path=exp.args.logdir)
+                                        log_path=exp.args.log_path)

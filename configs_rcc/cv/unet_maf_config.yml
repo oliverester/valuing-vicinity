@@ -1,6 +1,6 @@
 arch: unet
 encoder: resnet50
-gpu: 4
+gpu: 0
 workers: 8
 nfold: 5
 folds: [0]
@@ -18,19 +18,21 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_sem_seg/a_d16_k8_unet_dropout3
+logdir: logdir_reg/a_d16_k8_unet_dropout02emb
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
+combine-criterion-after-epoch: 5
+combine-weight: 0.5
 use-ce-weights: false
 overlay-polygons: true
 embedding-dim: 1024
 k-neighbours: 8
-use-ln: false
-dropout: 0.5
-emb_dropout: 0.5
+use-ln: true
+#dropout: 0.5
+emb-dropout: 0.2
 use-pos-encoding: true
 learn-pos-encoding: false
 num-attention-heads: 8
