@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 1
+gpu: 0
 workers: 8
 nfold: 5
 batch-size: 32
@@ -17,7 +17,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_sem_seg/a_d16_k8_deeplab_dropout05emb
+logdir: logdir_sem_seg/a_d16_k8_deeplab_dropout02emb
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5
@@ -28,7 +28,7 @@ overlay-polygons: true
 embedding-dim: 1024
 k-neighbours: 8
 use-ln: true
-emb-dropout: 0.5
+emb-dropout: 0.2
 use-pos-encoding: true
 learn-pos-encoding: false
 num-attention-heads: 8

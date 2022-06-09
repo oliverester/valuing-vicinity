@@ -42,6 +42,7 @@ class Experiment(metaclass=ABCMeta):
             config = config_parser(config_paths= [Path(self.args.reload_model_folder) / 'config.yml', config_path])
             self.args = config.parse_config(testmode=testmode)
             self.model_name = Path(self.args.reload_model_folder).stem
+            self.args.logdir = Path(self.args.reload_model_folder).parent
         else:
             self.new = True
             self.model_name = prefix + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now() )

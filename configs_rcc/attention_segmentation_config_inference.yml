@@ -3,4 +3,3 @@ reload-model-folder: /homes/oester/repositories/valuingvicinity/logdir_reg/a_d16
 folds: [0]
 include-val-inference: False
 gpu: 2
-logdir: logdir_reg/a_d16_k8_unet_dropout05
