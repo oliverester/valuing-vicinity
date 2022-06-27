@@ -187,6 +187,10 @@ class AttentionSegmentationConfig(Config):
                             help='Set to run with multiscale model from Schmitz et al.')
         parser.add_argument('--sample-size', default=None, type=int,
                             help='Select a WSI sample size (e.g. for debugging).')
+        parser.add_argument('--model-train', action='store_true', default=None,
+                            help='Set to keep model in train mode during validation phase.')
+        parser.add_argument('--fill-in-eval', action='store_true', default=False,
+                            help='Set to always fill model in evaluation mode.')
         
 
         args, unknown = parser.parse_known_args()

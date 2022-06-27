@@ -1,6 +1,7 @@
 """
 Run supervised ML-experiment
 """
+from contextlib import contextmanager
 from typing import Dict
 
 import torch
@@ -62,15 +63,22 @@ def train_epoch(exp: Experiment,
             data_loader = holdout_set.train_loader
             # for fast embedding inference: higher batch size - no grads
             big_data_loader = holdout_set.big_train_loader
-           
+            
             # switch to train mode
             model.train()
+            if args.model_train:
+                model.use_eval_mem = False
+
             torch.set_grad_enabled(True)
         else:
             data_loader = holdout_set.vali_loader
             big_data_loader = data_loader
 
-            model.eval()
+            # to reproduce "old" repository
+            if args.model_train is not True or epoch == 0:
+                model.eval()
+            else:
+                model.use_eval_mem = True
             torch.set_grad_enabled(False)
         
         epoch_dice_nominator = 0
@@ -85,9 +93,10 @@ def train_epoch(exp: Experiment,
             # initialize patch memory for train/val set
             model.block_memory = False
             model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
-            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu)
+            with eval_mode(model, on=args.fill_in_eval): # check if filling memory should be done in eval
+                model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False, use_phase=phase)
         else:
-            model.block_memory = True # block to not query it in first epoch
+            model.block_memory = True # block to not query it in first epoch (e.g. in evalution phase)
             
         for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
@@ -153,3 +162,14 @@ def train_epoch(exp: Experiment,
         performance_metric = metric_logger.vali_loss.global_avg
     return performance_metric
 
+
+@contextmanager
+def eval_mode(model, on: bool):
+    """Provides a context of model in eval setting. Afterwards, the previous state is reset.
+    """
+    if on:
+        current_mode = model.training
+        model.training = False  
+    yield
+    if on:           
+        model.training = current_mode

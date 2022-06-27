@@ -331,7 +331,7 @@ class DataProvider():
         # validation loader does not have distributed loader. So, each GPU runs a full validation run. However, only rank 0 prints
         wsi_loader = torch.utils.data.DataLoader(wsi_pytorch_dataset,
                                                  batch_size=self.val_batch_size,
-                                                 shuffle=False, # IMPORTANT, do not change for CLAM
+                                                 shuffle=False, # IMPORTANT, do not change for CLAM / and for patch inference order
                                                  num_workers=self.workers,
                                                  pin_memory=True,
                                                  collate_fn=self.collate_fn,
@@ -396,6 +396,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
+            shuffle=True,
             collate_fn=self.data_provider.collate_fn
         )
 
@@ -404,7 +405,7 @@ class HoldoutSet():
             batch_size=int(self.data_provider.val_batch_size),
             num_workers=self.data_provider.workers,
             pin_memory=True,
-            shuffle=False, # for visualization purpose
+            shuffle=True,
             collate_fn=self.data_provider.collate_fn
         )
         

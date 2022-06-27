@@ -154,7 +154,7 @@ def run_holdout(exp: Experiment,
         reload_from = exp.args.log_path
     else:
         print(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
-        reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder
+        reload_from = exp.args.reload_model_folder
         
     eval_holdout_model(holdout_set=holdout_set,
                        exp=exp,

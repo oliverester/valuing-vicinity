@@ -1,11 +1,11 @@
-from re import I
+from contextlib import contextmanager
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 import torch
 from torch import nn
 from tqdm import tqdm
 
-from src.deephist.segmentation.attention_segmentation.models.Memory import Memory
+from src.deephist.segmentation.attention_segmentation.models.memory import Memory
 from src.deephist.segmentation.attention_segmentation.models.multihead_attention_model import \
     MultiheadAttention
 from src.deephist.segmentation.attention_segmentation.models.transformer_model import ViT
@@ -68,8 +68,9 @@ class AttentionSegmentationModel(torch.nn.Module):
             self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
             
             # f_fuse
-            self.conv1x1 =  Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
-                                       self.base_model.encoder._out_channels[-1], (1,1))
+            self.conv1x1 = Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
+                                      self.base_model.encoder._out_channels[-1], (1,1),
+                                      use_batchnorm=True)
             if self.use_transformer:
                 self.transformer = ViT(kernel_size=self.kernel_size,
                                        dim=attention_input_dim,
@@ -90,7 +91,22 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               use_pos_encoding=use_pos_encoding,
                                               learn_pos_encoding=learn_pos_encoding,
                                               dropout=dropout)
-                
+            
+            self._use_eval_mem = None
+           
+    @property 
+    def use_eval_mem(self):
+        return self._use_eval_mem
+    
+    @use_eval_mem.setter
+    def use_eval_mem(self, eval_mem: bool):
+        self._use_eval_mem = eval_mem
+        if hasattr(self, 'val_memory'):
+            self.val_memory.use_eval_mem = eval_mem
+        
+        if hasattr(self, 'train_memory'):
+            self.train_memory.use_eval_mem = eval_mem
+            
     def initialize_memory(self,
                           gpu: int,
                           reset=True,
@@ -101,22 +117,31 @@ class AttentionSegmentationModel(torch.nn.Module):
             is_eval (bool, optional): If true, creates eval Memory - else
             train Memory. Later on, controlled by model.eval(). Defaults to False.
         """
-        if self.training:
+        if self.use_eval_mem is not None:
+            is_training = not self.use_eval_mem 
+        else:
+            is_training = self.training
+            
+        if is_training:
             if not hasattr(self, 'train_memory') or reset:
                 print("Initializing train memory")
-                train_memory = Memory(**memory_params, is_eval=False, gpu=gpu)
+                train_memory = Memory(**memory_params, is_eval=False, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
             if not hasattr(self, 'val_memory') or reset:
                 print("Initializing eval memory")
-                val_memory = Memory(**memory_params, is_eval=True, gpu=gpu)
+                val_memory = Memory(**memory_params, is_eval=True, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
 
     def fill_memory(self, 
                     data_loader: torch.utils.data.dataloader.DataLoader,
-                    gpu: int):
+                    gpu: int,
+                    use_phase: bool = None,
+                    debug: bool = False):
         """Fill the memory by providing a dataloader that iterates the patches. 
         Iterate must provide all n_p patches.
+        
+        Note: Fill memory must be done in eval-mode for best performance
         
         Args:
             data_loader (torch.utils.data.dataloader.DataLoader): DataLoader
@@ -124,8 +149,18 @@ class AttentionSegmentationModel(torch.nn.Module):
         if self.block_memory:
             raise Exception("Memory is blocked. If you really want to fill memory, set 'block_memory' to False")
         
+        # select memory:
+        if use_phase is None:
+            # derive from model.training status
+            memory = self.memory
+        else:
+            if use_phase == 'train':
+                memory = self.train_memory
+            elif use_phase == 'vali':
+                memory = self.val_memory
+            
         #reset memory first to ensure consistency
-        self.memory._reset()
+        memory._reset()
         
         print("Filling memory..")
         
@@ -134,17 +169,39 @@ class AttentionSegmentationModel(torch.nn.Module):
             with torch.no_grad():
                 for images, _, patches_idx, _ in tqdm(data_loader):
                     images = images.cuda(gpu, non_blocking=True)
-                        
+                    
                     embeddings = self(images,
                                       return_embeddings=True)
-                    self.memory.update_embeddings(patches_idx=patches_idx,
+                    if debug:
+                        raise Exception("should not be used")
+                        # replace with forward-running patch idx
+                        # e = (patches_idx[1]-self.memory.k + (patches_idx[2]-self.memory.k) * self.memory.n_x).unsqueeze(dim=-1).expand(embeddings.shape)
+                        # embeddings = e.type(torch.float32).to(embeddings.device)
+                        
+                    memory.update_embeddings(patches_idx=patches_idx,
                                                   embeddings=embeddings)
             # flag memory ready to use
-            self.memory.set_ready(n_patches=data_loader.dataset.__len__())
-        
+            memory.set_ready(n_patches=data_loader.dataset.__len__())
+    
+    @contextmanager
+    def eval_mode(self):
+        """Provides a context of model in eval setting. Afterwards, the previous state is reset.
+        """
+        current_mode = self.training
+        self.training = False  
+        yield self            
+        self.training = current_mode
+                
+    
     @property
     def memory(self):
-        if self.training:
+        
+        if self.use_eval_mem is not None:
+            use_train_mem = not self.use_eval_mem 
+        else:
+            use_train_mem = self.training
+
+        if use_train_mem:
             if not hasattr(self, 'train_memory'):
                 raise Exception("""Train Memory is not initialized yet. Please use the initialize_memory 
                 function of the AttentionSegmentationModel and specify the required dimensions""")
@@ -265,6 +322,3 @@ class AttentionSegmentationModel(torch.nn.Module):
             return masks, attention, neighbour_masks
         else:
             return masks
-
-           
-            

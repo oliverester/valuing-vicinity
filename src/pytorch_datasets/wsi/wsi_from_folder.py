@@ -15,7 +15,6 @@ from shapely.affinity import scale
 from shapely.geometry import Polygon, shape, GeometryCollection
 import yaml
 
-from src.deephist.segmentation.attention_segmentation.models.Memory import Memory
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
 class WSIFromFolder():
