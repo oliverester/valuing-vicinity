@@ -56,6 +56,9 @@ class SegmentationExperiment(MLExperiment):
             if not args.online:
                 dataset_type = AttentionPatchesDataset
                 collate_fn = self.collate_neighbour_patches
+            elif args.wsi_batch:
+                dataset_type = AttentionWsiBatchDataset
+                collate_fn = self.collate_neighbour_wsi_batch
             else:
                 dataset_type = AttentionPatchesDatasetOnline
                 collate_fn = self.collate_neighbour_patches_online
@@ -274,6 +277,7 @@ class SegmentationExperiment(MLExperiment):
             
         total_dice_nominator = 0
         total_dice_denominator = 0
+        
         for wsi in wsis:
             
             # free space on gpu
@@ -755,6 +759,9 @@ class SegmentationExperiment(MLExperiment):
     def collate_neighbour_patches(self, batch):
         return NeighbourBatch(batch)
     
+    def collate_neighbour_wsi_batch(self, batch):
+        return NeighbourWSIBatch(batch)
+    
     def collate_neighbour_patches_online(self, batch):
         return NeighbourBatchOnline(batch)
     
@@ -776,6 +783,25 @@ class NeighbourBatch:
         self.patch_idx = self.patch_idx.pin_memory()
         self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
         return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
+    
+class NeighbourWSIBatch:
+    def __init__(self, batch) -> None: 
+        # enforce that batchsize must be one, because dataset provides a batch of patches already in one sample
+        assert len(batch) == 1, 'Can only be used with batch size 1'
+           
+        self.img = torch.stack(batch[0][0])
+        self.mask = torch.stack([torch.LongTensor(item) for item in batch[0][1]])
+        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*batch[0][2]))])
+        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*batch[0][3]))]) 
+        
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        self.patch_idx = self.patch_idx.pin_memory()
+        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
+        return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
+    
     
 class NeighbourBatchOnline:
     def __init__(self, batch) -> None:    
