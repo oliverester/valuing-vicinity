@@ -18,17 +18,13 @@ def dice_coef(dice_nominator: torch.Tensor,
     Returns:
         Tuple[float, Dict[int, float]]: Tuple of total dice score and dict of dice scores per class
     """
-    # make a copy to not impact running nom/denom
-    dice_nominator = dice_nominator.detach().copy()
-    dice_denominator = dice_denominator.detach().copy()
-    
+
     if exclude_cls is None:
         exclude_cls = []
     selected_classes = [cls for cls in range(n_classes) if cls not in exclude_cls]
-    # if class is neither predicted / nor in true: denominator => 0 - error.
-    # here: we set this dice score to nan. It will then be exclude from mean calculations
-    dice_denominator[dice_denominator == 0] = float('nan')
-    dice_per_class = dice_nominator/dice_denominator
+    # if class is neither predicted / nor in true: denominator => 0 -> nan Dice score for this class.
+    dice_per_class = (dice_nominator/dice_denominator)[selected_classes]
+    # dice score mean over all non-nan scores
     mean_dice = dice_per_class[~torch.isnan(dice_per_class)].mean()
     
     return mean_dice.item(), {cls: dice.item() for dice, cls in zip(dice_per_class, selected_classes)}

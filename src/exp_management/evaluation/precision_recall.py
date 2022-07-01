@@ -10,7 +10,7 @@ def precision(true_positives: Tensor,
         exclude_cls = []
     selected_classes = [cls for cls in range(n_classes) if cls not in exclude_cls]
     
-    precision_per_class = true_positives / pred_positives
+    precision_per_class = (true_positives / pred_positives)[selected_classes]
     mean_precision = precision_per_class[~torch.isnan(precision_per_class)].mean()
     return mean_precision.item(), {cls: dice.item() for dice, cls in zip(precision_per_class, selected_classes)}
 
@@ -23,7 +23,7 @@ def recall(true_positives: Tensor,
         exclude_cls = []
     selected_classes = [cls for cls in range(n_classes) if cls not in exclude_cls]
     
-    recall_per_class = true_positives / positives
+    recall_per_class = (true_positives / positives)[selected_classes]
     mean_recall = recall_per_class[~torch.isnan(recall_per_class)].mean()
     return mean_recall.item(), {cls: dice.item() for dice, cls in zip(recall_per_class, selected_classes)}
     

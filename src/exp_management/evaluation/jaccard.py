@@ -18,13 +18,13 @@ def jaccard(jaccard_nominator: torch.Tensor,
     Returns:
         Tuple[float, Dict[int, float]]: Tuple of total jaccard score and dict of jaccard scores per class
     """
+
     if exclude_cls is None:
         exclude_cls = []
     selected_classes = [cls for cls in range(n_classes) if cls not in exclude_cls]
-    # if class is neither predicted / nor in true: denominator => 0 - error.
-    # here: we set this dice score to nan. It will then be exclude from mean calculations
-    jaccard_denominator[jaccard_denominator == 0] = float('nan')
-    jaccard_per_class = jaccard_nominator/jaccard_denominator
+    # if class is neither predicted / nor in true: denominator => 0 -> nan dice score for this class.
+    jaccard_per_class = (jaccard_nominator/jaccard_denominator)[selected_classes]
+    # dice score mean over all non-nan scores
     mean_jaccard = jaccard_per_class[~torch.isnan(jaccard_per_class)].mean()
     
     return mean_jaccard.item(), {cls: jaccard.item() for jaccard, cls in zip(jaccard_per_class, selected_classes)}
