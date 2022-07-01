@@ -95,7 +95,7 @@ class ViT(nn.Module):
                  heads: int, 
                  mlp_dim: int, 
                  hidde_dim: int,
-                 dropout: float = 0.,
+                 att_dropout: float = 0.,
                  emb_dropout: float = 0.,
                  use_pos_encoding: bool = True):
         super().__init__()
@@ -111,7 +111,7 @@ class ViT(nn.Module):
                                        heads=heads,
                                        dim_head=hidde_dim // heads,
                                        mlp_dim=mlp_dim,
-                                       dropout=dropout)
+                                       dropout=att_dropout)
 
     def forward(self, x, mask=None, return_attention=False):
         

@@ -5,7 +5,7 @@ from src.exp_management import tracking
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 
 
-def initialize_logging(metric_logger, phase, num_heads=None):
+def initialize_logging(metric_logger, phase, args, num_heads=None):
     
     metric_logger.add_meter(f'{phase}_loss',
                                 tracking.SmoothedValue(window_size=1,
@@ -23,7 +23,7 @@ def initialize_logging(metric_logger, phase, num_heads=None):
                                                     type='global_avg',
                                                     to_tensorboard=False))
     # add attention logger per head
-    if num_heads is not None:
+    if args.attention_on:
         for i in range(num_heads):
             metric_logger.add_meter(f'{phase}_ex_con_central_attention/head_{i}',
                                 tracking.SmoothedValue(window_size=1,
@@ -31,6 +31,14 @@ def initialize_logging(metric_logger, phase, num_heads=None):
             metric_logger.add_meter(f'{phase}_coeff_var_neighbour_attention/head_{i}',
                                 tracking.SmoothedValue(window_size=1,
                                                         type='global_avg'))
+    
+    if args.helper_loss:
+        metric_logger.add_meter(f'{phase}_cls_loss',
+                                tracking.SmoothedValue(window_size=1,
+                                                       type='global_avg'))
+        metric_logger.add_meter(f'{phase}_mask_loss',
+                                tracking.SmoothedValue(window_size=1,
+                                                       type='global_avg'))
 
 
 def log_step(phase,
@@ -40,8 +48,10 @@ def log_step(phase,
              labels_gpu, 
              images,
              args,
-             attention_gpu=None,
-             neighbour_masks=None
+             attention_gpu = None,
+             neighbour_masks = None,
+             mask_loss = None,
+             helper_loss = None
              ):
     
     if args.log_details:  
@@ -111,10 +121,14 @@ def log_step(phase,
                 metric_logger.meters[k].update(excess_contribution_central_attention[i], len(images))
                 k = f'train_coeff_var_neighbour_attention_slash_head_{i}'
                 metric_logger.meters[k].update(coeff_var_neighbour_attention[i], len(images))
+        if mask_loss is not None:
+            metric_logger.update(train_mask_loss=(mask_loss, len(images)))
+        if helper_loss is not None:
+            metric_logger.update(train_helper_loss=(helper_loss, len(images)))
     else:
         metric_logger.update(vali_pixel_accuracy=(batch_accuracy, len(images)),
-                                vali_loss=(loss.item(), len(images)),
-                                vali_step_dice=step_dice)
+                             vali_loss=(loss.item(), len(images)),
+                             vali_step_dice=step_dice)
         if excess_contribution_central_attention is not None:
             # update attention logger per head
             for i in range(args.num_attention_heads):
@@ -122,6 +136,10 @@ def log_step(phase,
                 metric_logger.meters[k].update(excess_contribution_central_attention[i], len(images))
                 k = f'vali_coeff_var_neighbour_attention_slash_head_{i}'
                 metric_logger.meters[k].update(coeff_var_neighbour_attention[i], len(images))
+        if mask_loss is not None:
+            metric_logger.update(vali_mask_loss=(mask_loss, len(images)))
+        if helper_loss is not None:
+            metric_logger.update(vali_helper_loss=(helper_loss, len(images)))
                 
     return step_dice_nominator, step_dice_denominator
     

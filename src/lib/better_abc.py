@@ -1,3 +1,11 @@
+"""
+ABCMeta extends for abstract attributes.
+
+Raises:
+    NotImplementedError: _description_
+
+"""
+
 from abc import ABCMeta as NativeABCMeta
 
 class DummyAttribute:

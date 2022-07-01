@@ -55,7 +55,8 @@ def train_epoch(exp: Experiment,
         
         initialize_logging(metric_logger=metric_logger,
                            phase=phase,
-                           num_heads=args.num_attention_heads)
+                           num_heads=args.num_attention_heads,
+                           args=args)
 
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 
@@ -66,21 +67,13 @@ def train_epoch(exp: Experiment,
             
             # switch to train mode
             model.train()
-            if args.wsi_batch:
-                # run in train mode, set flag-alternative
-                model.use_eval_mem = False
 
             torch.set_grad_enabled(True)
         else:
             data_loader = holdout_set.vali_loader
             big_data_loader = data_loader
 
-            # to reproduce "old" repository
-            if args.wsi_batch:
-                # run in train mode, set flag-alternative
-                model.use_eval_mem = True
-            else:
-                model.eval()
+            model.eval()
             torch.set_grad_enabled(False)
         
         epoch_dice_nominator = 0
@@ -95,7 +88,7 @@ def train_epoch(exp: Experiment,
             # initialize patch memory for train/val set
             model.block_memory = False
             model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
-            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False, use_phase=phase)
+            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False)
         else:
             model.block_memory = True # block to not query it in first epoch (e.g. in evalution phase)
             

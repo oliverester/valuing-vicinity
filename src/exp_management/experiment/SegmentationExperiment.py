@@ -151,7 +151,7 @@ class SegmentationExperiment(MLExperiment):
             raise Exception("Criterion is invalid")
         
         if self.args.helper_loss:
-            l = HelperLoss(base_loss=l, weight=0.8)
+            l = HelperLoss(base_loss=l, base_weight=self.args.combine_weight)
             
         return l
             
@@ -199,7 +199,7 @@ class SegmentationExperiment(MLExperiment):
                                                transformer_depth=self.args.transformer_depth,
                                                mlp_hidden_dim=self.args.mlp_hidden_dim,
                                                emb_dropout=self.args.emb_dropout,
-                                               dropout=self.args.dropout,
+                                               att_dropout=self.args.att_dropout,
                                                online=self.args.online,
                                                use_helperloss=self.args.helper_loss,
                                                fill_in_eval=self.args.fill_in_eval

@@ -18,6 +18,10 @@ def dice_coef(dice_nominator: torch.Tensor,
     Returns:
         Tuple[float, Dict[int, float]]: Tuple of total dice score and dict of dice scores per class
     """
+    # make a copy to not impact running nom/denom
+    dice_nominator = dice_nominator.detach().copy()
+    dice_denominator = dice_denominator.detach().copy()
+    
     if exclude_cls is None:
         exclude_cls = []
     selected_classes = [cls for cls in range(n_classes) if cls not in exclude_cls]

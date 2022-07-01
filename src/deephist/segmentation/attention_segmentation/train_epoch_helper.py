@@ -55,7 +55,8 @@ def train_epoch_helper(exp: Experiment,
         
         initialize_logging(metric_logger=metric_logger,
                            phase=phase,
-                           num_heads=args.num_attention_heads)
+                           num_heads=args.num_attention_heads,
+                           args=args)
 
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 
@@ -118,8 +119,13 @@ def train_epoch_helper(exp: Experiment,
             attention= result['attention']
             k_neighbour_mask= result['neighbour_masks']
 
-            loss = criterion(logits, cls_logits, labels_gpu, dist)
-                
+            # total / mask / cls loss
+            losses = criterion(logits, cls_logits, labels_gpu, dist)
+            
+            loss = losses['loss']
+            cls_loss = losses['cls_loss'] 
+            mask_loss = losses['mask_loss']
+              
             # compute gradient and do SGD step
             if phase == 'train':
                 optimizer.zero_grad()

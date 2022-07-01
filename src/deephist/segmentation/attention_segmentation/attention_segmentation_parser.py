@@ -160,8 +160,8 @@ class AttentionSegmentationConfig(Config):
                             help='Select transformer depth (layers).')
         parser.add_argument('--emb-dropout', type=float, default=0,
                             help='Select transformer embedding dropout')
-        parser.add_argument('--dropout', type=float, default=0,
-                            help='Select transformer dropout (mlp & att)')
+        parser.add_argument('--att-dropout', type=float, default=0,
+                            help='Select MHA/transformer dropout (mlp & att)')
         parser.add_argument('--use-ln', action='store_true',
                             help='Set to use layer normalization at MSA beginning.')
         parser.add_argument('--use-pos-encoding', action='store_true',

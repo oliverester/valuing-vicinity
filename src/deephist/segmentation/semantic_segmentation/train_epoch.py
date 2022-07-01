@@ -52,7 +52,8 @@ def train_epoch(exp: Experiment,
                                               args=args)
         
         initialize_logging(metric_logger=metric_logger,
-                           phase=phase)
+                           phase=phase,
+                           args=args)
         
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 

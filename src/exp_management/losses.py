@@ -67,17 +67,21 @@ class CombinedLoss(nn.Module):
             return l1
         
 class HelperLoss(nn.Module):
-    def __init__(self, base_loss, weight):
+    def __init__(self, base_loss, base_weight):
         super(HelperLoss, self).__init__()
         self.base_loss = base_loss
         self.helper = nn.CrossEntropyLoss()   
-        self.weight = weight 
+        self.base_weight = base_weight 
         
     def forward(self, inputs, cls_logits, targets, cls_targets):
         
         l = self.base_loss(inputs, targets)
         if cls_logits is not None:
             helper_loss = self.helper(cls_logits, cls_targets)
-            return (self.weight) * l + (1-self.weight) * helper_loss
+            return {'loss': (self.base_weight) * l + (1-self.base_weight) * helper_loss,
+                    'cls_loss': helper_loss,
+                    'mask_loss': l}
         else:
-            return l
+            return {'loss': l,
+                    'cls_loss': None,
+                    'mask_loss': l}

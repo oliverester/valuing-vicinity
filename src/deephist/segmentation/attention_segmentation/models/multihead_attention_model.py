@@ -16,7 +16,8 @@ class MultiheadAttention(nn.Module):
                  use_ln: bool =False, 
                  use_pos_encoding: bool =False,
                  learn_pos_encoding: bool =False,
-                 dropout: float = 0.):
+                 att_dropout: float = 0.,
+                 emb_dropout: float = 0.):
         """_summary_
 
         Args:
@@ -27,7 +28,8 @@ class MultiheadAttention(nn.Module):
             use_ln (bool, optional): Use layer normalization for k, q, v. Defaults to False.
             use_pos_encoding (bool, optional): Use sinusiodal position encoding. Defaults to False.
             learn_pos_encoding (bool, optional): Use learnable 2-d position embeddings. Defaults to False.
-            dropout (float): Set attention dropout after softmax. Default to 0.
+            att_dropout (float): Set attention dropout after softmax. Default to 0.
+            emb_dropout (float): Set embedding dropout. Default to 0.
         """
         super().__init__()
         assert hidden_dim % num_heads == 0, "Embedding dimension must be 0 modulo number of heads."
@@ -60,8 +62,9 @@ class MultiheadAttention(nn.Module):
             self.pos_enc = PositionalEncoding(d_hid=hidden_dim // num_heads,
                                               n_position=kernel_size*kernel_size)
         
-        self.dropout = nn.Dropout(p=dropout)
-
+        self.att_dropout = nn.Dropout(p=att_dropout)
+        self.emb_dropout = nn.Dropout(p=emb_dropout)
+        
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -75,6 +78,10 @@ class MultiheadAttention(nn.Module):
         
     def forward(self, q, kv, mask=None, return_attention=False):
         batch_size, seq_length, _ = kv.size()
+
+        # emb dropout: default zero / identity
+        kv = self.emb_dropout(kv)
+        q = self.emb_dropout(q)
 
         if self.use_ln:
             kv = self.l_norm(kv)
@@ -119,6 +126,6 @@ class MultiheadAttention(nn.Module):
         if mask is not None:
             attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
         attention = F.softmax(attn_logits, dim=-1)
-        attention = self.dropout(attention)
+        attention = self.att_dropout(attention)
         values = torch.matmul(attention, v)
         return values, attention

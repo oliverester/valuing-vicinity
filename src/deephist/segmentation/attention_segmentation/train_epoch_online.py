@@ -62,7 +62,8 @@ def train_epoch_online(exp: Experiment,
 
         initialize_logging(metric_logger=metric_logger,
                            phase=phase,
-                           num_heads=args.num_attention_heads)
+                           num_heads=args.num_attention_heads,
+                           args=args)
 
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 

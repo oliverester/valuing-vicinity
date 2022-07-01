@@ -27,7 +27,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                  num_attention_heads: int = 8,
                  transformer_depth: int = 8,
                  emb_dropout: float = 0.,
-                 dropout: float = 0.,
+                 att_dropout: float = 0.,
                  use_ln: bool = False,
                  use_pos_encoding: bool = False,
                  use_central_attention: bool = False,
@@ -38,6 +38,34 @@ class AttentionSegmentationModel(torch.nn.Module):
                  fill_in_eval: bool = True,
                  online: bool = False
                  ) -> None:
+        """_summary_
+
+        Args:
+            arch (str): Select Pytorch Segmentation Models architeture (e.g. unet, deeplabv3)
+            encoder_name (str): Select Pytorch Segmentation Models encoder (e.g. resnet50)
+            encoder_weights (str): Select Pytorch Segmentation Models weights (e.g. pretrained)
+            number_of_classes (int): Provide number of segmentation classes
+            attention_input_dim (int): Token dimension of memory embedding - equivalent to MHA/Transformer input dimension. 
+            k (int): Neighbourhood size (radius).
+            attention_hidden_dim (int, optional): Internal dimension of MHA/Transformer after linear projection. Defaults to 1024.
+            mlp_hidden_dim (int, optional): Internal dimension of Transformer within MLP-module. Defaults to 2048.
+            num_attention_heads (int, optional): Number attention heads of MHA/Transformer. Defaults to 8.
+            transformer_depth (int, optional): Depth of Transformer (num layers). Defaults to 8.
+            emb_dropout (float, optional): Dropout for embeddings (MHA/Transformer). Defaults to 0..
+            att_dropout (float, optional): Dropout for attention module (MHA/Transformer). Defaults to 0..
+            use_ln (bool, optional): Use layer normalization (MHA only) for k, q, v. Defaults to False.
+            use_pos_encoding (bool, optional): Use sinusiodal position encoding (MHA/Transformer). Defaults to False.
+            use_central_attention (bool, optional): Self-attention to central embedding turned on. 
+                If false, masking is applied to central patch. . Defaults to False.
+            learn_pos_encoding (bool, optional): If true, position encoding is learned. Applies only to MHA . Defaults to False.
+            attention_on (bool, optional): Use MHA/Transformer. If false, base segmentation model is applied. Defaults to True.
+            use_transformer (bool, optional): Switch to use Transformer instead of MHA. Defaults to False.
+            use_helperloss (bool, optional): Activates a tissue distribution helper loss per patch. 
+                Applied after MHA/Transformer as lin. layer on attended embedding. Defaults to False.
+            fill_in_eval (bool, optional): Set to always fill memory in evalution mode. Defaults to True.
+            online (bool, optional): Set to get neighbour embeddings on the fly (instead of using the memory). Defaults to False.
+            
+        """
         super().__init__()
         
         self.online = online
@@ -69,8 +97,6 @@ class AttentionSegmentationModel(torch.nn.Module):
             # f_emb
             self.pooling = nn.AdaptiveAvgPool2d(1)
             # number of feature maps of encoder output: e.g. 2048 for U-net 5 layers 
-            self.drop_out = nn.Dropout(p=emb_dropout)
-            
             self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
             
             # f_fuse
@@ -85,7 +111,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                                        mlp_dim=mlp_hidden_dim,
                                        hidde_dim=attention_hidden_dim,
                                        emb_dropout=emb_dropout,
-                                       dropout=dropout,
+                                       att_dropout=att_dropout,
                                        use_pos_encoding=use_pos_encoding,
                                        )
             else: # use MHA
@@ -96,13 +122,15 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               use_ln=use_ln,
                                               use_pos_encoding=use_pos_encoding,
                                               learn_pos_encoding=learn_pos_encoding,
-                                              dropout=dropout)
+                                              emb_dropout=emb_dropout,
+                                              att_dropout=att_dropout)
             if self.use_helperloss:
                 self.classifier = nn.Sequential(
                                     nn.Dropout(p=0.25),
                                     nn.Linear(in_features=attention_input_dim, out_features=number_of_classes),
                                   )
-            
+            # flag used for wsibatch (runs always with model.training) -
+            # to remember which memory to use (instead of deriving from model.training)
             self._use_eval_mem = None
            
     @property 
@@ -189,7 +217,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                         embeddings = self(images,
                                           return_embeddings=True)
                     if debug:
-                        raise Exception("should not be used")
+                        raise Exception("Debug mode turned off")
                         # replace with forward-running patch idx
                         # e = (patches_idx[1]-self.memory.k + (patches_idx[2]-self.memory.k) * self.memory.n_x).unsqueeze(dim=-1).expand(embeddings.shape)
                         # embeddings = e.type(torch.float32).to(embeddings.device)
@@ -269,8 +297,7 @@ class AttentionSegmentationModel(torch.nn.Module):
             # f_emb:
             # pool feature maps + linear proj to patch emb
             pooled = self.pooling(encoder_map)
-            pooled_flatten = self.drop_out(pooled.flatten(1))
-            embeddings = self.lin_proj(pooled_flatten)
+            embeddings = self.lin_proj(pooled.flatten(1))
             
             # sanity check
             assert not torch.any(torch.max(embeddings, dim=1)[0] == 0), "Embeddings must have values."
@@ -321,7 +348,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                                                                mask=k_neighbour_masks,
                                                                return_attention=True)
                     
-                # helper loss for classification 
+                # helper loss for classification - implement after attention to bring network to use memory attention
+                # for classification task 
                 if self.use_helperloss:
                     cls_logits = self.classifier(attended_embeddings.squeeze(dim=1))
                     
@@ -342,17 +370,10 @@ class AttentionSegmentationModel(torch.nn.Module):
         # segmentation head
         logits = self.base_model.segmentation_head(decoder_output)
         
-        if self.attention_on and self.use_helperloss:
-             return {'logits': logits,
-                     'cls_logits': cls_logits, 
-                     'attention': attention, 
-                     'neighbour_masks': neighbour_masks
-                    }
-        elif self.attention_on:
-            return {'logits': logits,
-                    'attention': attention, 
-                    'neighbour_masks': neighbour_masks
-                   }
-        else:
-            return {'logits': logits}
+        return {'logits': logits,
+                'cls_logits': cls_logits, 
+                'attention': attention, 
+                'neighbour_masks': neighbour_masks
+            }
+       
     
