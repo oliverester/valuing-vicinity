@@ -65,7 +65,9 @@ class PatchFromFile:
             with open(metadata_file) as metadata_f:
                 # use safe_load instead load                
                 metadata = yaml.safe_load(metadata_f)
-            self.label_distribution = metadata 
+            # apply on-the-fly replace of classes 
+            self.label_distribution = {self.wsi.wsi_dataset.label_handler.replace_label(cls): ratio 
+                                       for cls, ratio in metadata.items()}
             
             # add labels to patch label handler
             # there might be cases where labels might only be in distributions  

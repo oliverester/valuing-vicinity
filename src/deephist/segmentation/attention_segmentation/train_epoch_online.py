@@ -80,17 +80,25 @@ def train_epoch_online(exp: Experiment,
         sample_labels = None
         sample_preds = None
         
-        for images, labels, neighbour_imgs, neighbour_mask in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+        for batch in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+            
+            images = batch['img']
+            labels = batch['mask']
+            neighbour_imgs = batch['neighbour_img']
+            neighbour_mask = batch['neighbour_mask']
+           
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
                 neighbour_imgs_gpu = neighbour_imgs.cuda(args.gpu, non_blocking=True)
                 neighbour_mask_gpu = neighbour_mask.cuda(args.gpu, non_blocking=True)
             
-            logits, attention = model(images=images_gpu, 
+            result = model(images=images_gpu, 
                                       neighbour_masks=neighbour_mask_gpu,
                                       neighbour_imgs=neighbour_imgs_gpu,
                                       return_attention=True) 
+            logits= result['logits']
+            attention= result['attention']
 
             if args.combine_criterion_after_epoch is not None:
                 loss = criterion(logits, labels_gpu, epoch)

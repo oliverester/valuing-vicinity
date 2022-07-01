@@ -10,6 +10,7 @@
     ],
     "jupyter.jupyterServerType": "local",
     "files.watcherExclude": {
-        "**/data/**": true
+        "**/data/**": true,
+        "**/logdir*/**": true
     }
 }

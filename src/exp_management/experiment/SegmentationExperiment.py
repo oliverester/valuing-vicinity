@@ -11,9 +11,11 @@ import torch
 from torchvision import transforms
 
 from src.deephist.segmentation.attention_segmentation.AttentionPatchesDataset import AttentionPatchesDataset
+from src.deephist.segmentation.attention_segmentation.AttentionPatchesDistDataset import AttentionPatchesDistDataset
 from src.deephist.segmentation.attention_segmentation.AttentionPatchesDatasetOnline import AttentionPatchesDatasetOnline
 from src.deephist.segmentation.attention_segmentation.models.attention_segmentation_model import AttentionSegmentationModel
 from src.deephist.segmentation.attention_segmentation.train_epoch import train_epoch
+from src.deephist.segmentation.attention_segmentation.train_epoch_helper import train_epoch_helper
 from src.deephist.segmentation.attention_segmentation.train_epoch_online import train_epoch_online
 from src.deephist.segmentation.attention_segmentation.attention_segmentation_parser import AttentionSegmentationConfig
 import src.deephist.segmentation.semantic_segmentation.train_epoch as train_semantic
@@ -29,7 +31,7 @@ from src.exp_management.evaluation.confusion_matrix import torch_conf_matrix
 from src.exp_management.evaluation.dice import dice_coef, dice_denominator, dice_nominator
 from src.exp_management.evaluation.jaccard import jaccard, jaccard_denominator, jaccard_nominator
 from src.exp_management.evaluation.precision_recall import positives, precision, pred_positives, recall, true_positives
-from src.exp_management.losses import CombinedLoss, FocalTverskyLoss
+from src.exp_management.losses import CombinedLoss, FocalTverskyLoss, HelperLoss
 from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.settings import get_class_weights
@@ -52,22 +54,26 @@ class SegmentationExperiment(MLExperiment):
         
         assert(not(args.attention_on and args.multiscale_on)) , 'Either attention mode or multiscale mode can be activated.'
         
+        # to define differnet dataset types for inference
+        inference_dataset_type = None
+        inference_collate_fn = None
+        
         if args.attention_on:
-            if not args.online:
-                dataset_type = AttentionPatchesDataset
-                collate_fn = self.collate_neighbour_patches
-            elif args.wsi_batch:
-                dataset_type = AttentionWsiBatchDataset
-                collate_fn = self.collate_neighbour_wsi_batch
+            if args.online:
+                train_dataset_type = AttentionPatchesDatasetOnline
+                train_collate_fn = self.collate_neighbour_patches_online
+            elif args.helper_loss:
+                train_dataset_type = AttentionPatchesDistDataset
+                train_collate_fn = self.collate_neighbour_patches_dist
             else:
-                dataset_type = AttentionPatchesDatasetOnline
-                collate_fn = self.collate_neighbour_patches_online
+                train_dataset_type = AttentionPatchesDataset
+                train_collate_fn = self.collate_neighbour_patches
         elif args.multiscale_on:
-            dataset_type = MultiscalePatchesDataset
-            collate_fn = self.collate_multiscale_patches            
+            train_dataset_type = MultiscalePatchesDataset
+            train_collate_fn = self.collate_multiscale_patches            
         else:
-            dataset_type = CustomPatchesDataset
-            collate_fn = None # torch default collate
+            train_dataset_type = CustomPatchesDataset
+            train_collate_fn = self.collate_patches # torch default collate
             
         data_provider = DataProvider(train_data=args.train_data,
                                      test_data=args.test_data,
@@ -88,8 +94,10 @@ class SegmentationExperiment(MLExperiment):
                                      overlay_polygons=args.overlay_polygons,
                                      workers=args.workers,
                                      gpu=args.gpu,
-                                     dataset_type=dataset_type,
-                                     collate_fn=collate_fn,
+                                     train_dataset_type=train_dataset_type,
+                                     train_collate_fn=train_collate_fn,
+                                     inference_dataset_type=inference_dataset_type,
+                                     inference_collate_fn=inference_collate_fn,
                                      attention_on=args.attention_on,
                                      embedding_dim=args.embedding_dim,
                                      k_neighbours=args.k_neighbours,
@@ -113,27 +121,27 @@ class SegmentationExperiment(MLExperiment):
                 criterion = super().get_criterion(weight=weights)
             else:
                 criterion = super().get_criterion()
-            return criterion
+            l = criterion
         elif self.args.criterion == 'dice':
-            return DiceLoss(reduction='mean')
+            l = DiceLoss(reduction='mean')
         elif self.args.criterion == 'focal':
-            return FocalLoss(gamma=self.args.gamma) 
+            l = FocalLoss(gamma=self.args.gamma) 
         elif self.args.criterion == 'focal_tversky':
-            return FocalTverskyLoss(alpha=self.args.alpha, 
+            l = FocalTverskyLoss(alpha=self.args.alpha, 
                                     beta=self.args.beta, 
                                     gamma=self.args.gamma)
         elif self.args.criterion == 'ce+dice':
-            return CombinedLoss(l1=super().get_criterion(),
+            l = CombinedLoss(l1=super().get_criterion(),
                                 l2=DiceLoss(reduction='mean'),
                                 weight2=self.args.combine_weight,
                                 add_l2_at_epoch=self.args.combine_criterion_after_epoch) 
         elif self.args.criterion == 'focal+dice':
-            return CombinedLoss(l1=DiceLoss(reduction='mean'),
+            l =  CombinedLoss(l1=DiceLoss(reduction='mean'),
                                 l2= FocalLoss(gamma=self.args.gamma),
                                 weight2=self.args.combine_weight,
                                 add_l2_at_epoch=self.args.combine_criterion_after_epoch) 
         elif self.args.criterion == 'focal+focal_tversky':
-            return CombinedLoss(l1=FocalLoss(gamma=self.args.gamma),
+            l = CombinedLoss(l1=FocalLoss(gamma=self.args.gamma),
                                 l2= FocalTverskyLoss(gamma=self.args.gamma,
                                                         alpha=self.args.alpha, 
                                                         beta=self.args.beta),
@@ -141,6 +149,11 @@ class SegmentationExperiment(MLExperiment):
                                 add_l2_at_epoch=self.args.combine_criterion_after_epoch)     
         else:
             raise Exception("Criterion is invalid")
+        
+        if self.args.helper_loss:
+            l = HelperLoss(base_loss=l, weight=0.8)
+            
+        return l
             
 
     
@@ -187,7 +200,9 @@ class SegmentationExperiment(MLExperiment):
                                                mlp_hidden_dim=self.args.mlp_hidden_dim,
                                                emb_dropout=self.args.emb_dropout,
                                                dropout=self.args.dropout,
-                                               online=self.args.online
+                                               online=self.args.online,
+                                               use_helperloss=self.args.helper_loss,
+                                               fill_in_eval=self.args.fill_in_eval
                                                )
         return model
         
@@ -203,17 +218,7 @@ class SegmentationExperiment(MLExperiment):
                              **kwargs):
         
         if self.args.attention_on:
-            if not self.args.online:
-                new_performance = train_epoch(exp=self,
-                                              holdout_set=holdout_set,
-                                              model=model,
-                                              criterion=criterion,
-                                              optimizer=optimizer,
-                                              label_handler=label_handler,
-                                              epoch=epoch,
-                                              args=args,
-                                              writer=writer)
-            else:
+            if self.args.online:
                 new_performance = train_epoch_online(exp=self,
                                                      holdout_set=holdout_set,
                                                      model=model,
@@ -223,6 +228,26 @@ class SegmentationExperiment(MLExperiment):
                                                      epoch=epoch,
                                                      args=args,
                                                      writer=writer)
+            elif self.args.helper_loss:
+                new_performance = train_epoch_helper(exp=self,
+                                                     holdout_set=holdout_set,
+                                                     model=model,
+                                                     criterion=criterion,
+                                                     optimizer=optimizer,
+                                                     label_handler=label_handler,
+                                                     epoch=epoch,
+                                                     args=args,
+                                                     writer=writer)
+            else:
+                new_performance = train_epoch(exp=self,
+                                              holdout_set=holdout_set,
+                                              model=model,
+                                              criterion=criterion,
+                                              optimizer=optimizer,
+                                              label_handler=label_handler,
+                                              epoch=epoch,
+                                              args=args,
+                                              writer=writer)
         elif self.args.multiscale_on:
             new_performance = train_multiscale.train_epoch(exp=self,
                                                            holdout_set=holdout_set,
@@ -756,11 +781,14 @@ class SegmentationExperiment(MLExperiment):
         
         return train_aug_transform, val_aug_transform
     
+    def collate_patches(self, batch):
+        return Batch(batch)
+    
     def collate_neighbour_patches(self, batch):
         return NeighbourBatch(batch)
     
-    def collate_neighbour_wsi_batch(self, batch):
-        return NeighbourWSIBatch(batch)
+    def collate_neighbour_patches_dist(self, batch):
+        return NeighbourBatchDist(batch)
     
     def collate_neighbour_patches_online(self, batch):
         return NeighbourBatchOnline(batch)
@@ -769,6 +797,40 @@ class SegmentationExperiment(MLExperiment):
         return MultiscaleBatch(batch)
         
   
+class Batch:
+    def __init__(self, batch) -> None:    
+        self.img = torch.stack([item[0] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
+        
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        return {'img': self.img,
+                'mask': self.mask,
+                }
+class NeighbourBatchDist:
+    def __init__(self, batch) -> None:    
+        self.img = torch.stack([item[0] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
+        self.dist = torch.stack([torch.FloatTensor(item[2]) for item in batch])
+        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[3]) for item in batch]))])
+        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[4]) for item in batch]))]) 
+        
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        self.dist = self.dist.pin_memory()
+        self.patch_idx = self.patch_idx.pin_memory()
+        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
+        return {'img': self.img,
+                'mask': self.mask,
+                'dist': self.dist,
+                'patch_idx': self.patch_idx, 
+                'patch_neighbour_idxs': self.patch_neighbour_idxs
+                }
+     
 class NeighbourBatch:
     def __init__(self, batch) -> None:    
         self.img = torch.stack([item[0] for item in batch])
@@ -782,26 +844,11 @@ class NeighbourBatch:
         self.mask = self.mask.pin_memory()
         self.patch_idx = self.patch_idx.pin_memory()
         self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
-        return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
-    
-class NeighbourWSIBatch:
-    def __init__(self, batch) -> None: 
-        # enforce that batchsize must be one, because dataset provides a batch of patches already in one sample
-        assert len(batch) == 1, 'Can only be used with batch size 1'
-           
-        self.img = torch.stack(batch[0][0])
-        self.mask = torch.stack([torch.LongTensor(item) for item in batch[0][1]])
-        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*batch[0][2]))])
-        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*batch[0][3]))]) 
-        
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        self.patch_idx = self.patch_idx.pin_memory()
-        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
-        return self.img, self.mask, self.patch_idx, self.patch_neighbour_idxs
-    
+        return {'img': self.img,
+                'mask': self.mask,
+                'patch_idx': self.patch_idx, 
+                'patch_neighbour_idxs': self.patch_neighbour_idxs
+                }
     
 class NeighbourBatchOnline:
     def __init__(self, batch) -> None:    
@@ -816,7 +863,11 @@ class NeighbourBatchOnline:
         self.mask = self.mask.pin_memory()
         self.neighbour_img = self.neighbour_img.pin_memory()
         self.neighbour_mask = self.neighbour_mask.pin_memory()
-        return self.img, self.mask, self.neighbour_img, self.neighbour_mask
+        return {'img': self.img,
+                'mask': self.mask,
+                'neighbour_img': self.neighbour_img, 
+                'neighbour_mask': self.neighbour_mask
+               }
     
 class MultiscaleBatch:
     def __init__(self, batch) -> None:    
@@ -829,4 +880,7 @@ class MultiscaleBatch:
         self.img = self.img.pin_memory()
         self.context_img = self.context_img.pin_memory()
         self.mask = self.mask.pin_memory()
-        return self.img, self.context_img, self.mask
+        return {'img': self.img,
+                'mask': self.mask,
+                'context_img': self.context_img
+                }

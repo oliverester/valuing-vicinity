@@ -72,8 +72,12 @@ def train_epoch(exp: Experiment,
         sample_labels = None
         sample_preds = None
         
-        for images, context_images,  labels in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
-
+        for batch in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+            
+            images = batch['img']
+            labels = batch['mask']
+            context_images = batch['context_img']
+        
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)              
                 context_images_gpu = context_images.cuda(args.gpu, non_blocking=True)

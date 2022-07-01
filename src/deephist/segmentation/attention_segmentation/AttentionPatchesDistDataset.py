@@ -4,7 +4,6 @@ Provide a CustomPatchesDataset to work with WSI and Patches objects.
 """
 
 from contextlib import contextmanager
-import random
 from typing import List, Union
 
 import torch
@@ -18,27 +17,33 @@ from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 
 
-class AttentionWsiBatchDataset(Dataset):
+class AttentionPatchesDistDataset(Dataset):
     """
-    AttentionWsiBatchDataset is a pytorch dataset to provide patch batches of an identical WSI.
+    CustomPatchesDataset is a pytorch dataset to work with WSI patches
+    provides by eihter WSI objects or WSIDatset objects.
     """
 
     def __init__(self,
-                 wsi_dataset: WSIDatasetFolder,
-                 patch_batchsize: int,
+                 wsi_dataset: Union[WSIDatasetFolder, WSIFromFolder] = None,
+                 patches: List[PatchFromFile] = None,
                  transform: transforms.Compose = None):
         """
-        Create a AttentionWsiBatchDataset from a WSI dataset.
+        Create a AttentionPatchesDataset from a WSI or WSI dataset.
 
         Args:
-            wsi_dataset (WSIDatasetFolder): A WSIDataset
-                to get wsis from.
+            wsi_dataset Union[AbstractWSIDataset, AbstractWSI]: Either a WSI or a WSIDataset
+                to get patches from.
             transform (transforms.Compose, optional): Augmentation pipeline. Defaults to None.
         """
-    
+        if patches is not None and wsi_dataset is not None:
+            raise Exception("Either provide patches or wsis.")
+        elif patches is None and wsi_dataset is not None:
+            self.use_patches = False
+        else:
+            self.use_patches = True
             
-        self.patch_batchsize = patch_batchsize
         self.wsi_dataset = wsi_dataset
+        self.patches = patches
         self.transform = transform
                 
     def get_label_handler(self) -> LabelHandler:
@@ -51,47 +56,43 @@ class AttentionWsiBatchDataset(Dataset):
 
     def __len__(self):
         
-        n_wsi = len(self.wsi_dataset.wsis)
-        
-        return n_wsi
+        if self.use_patches:
+            n_patches = len(self.patches)
+        else:
+            n_patches = len(self.wsi_dataset.get_patches())
+        return n_patches
     
     def __getitem__(self, idx):
-        """
-        Draw 'batch_size' patches from 'idx' wsi. Consider class imbalance. 
-
-        Args:
-            idx (_type_): _description_
-
-        Returns:
-            _type_: _description_
-        """
                 
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        wsi = self.wsi_dataset.wsis[idx]
-        
-        #draw number batch size patches
-        patch_batch = random.sample(wsi.get_patches(), self.patch_batchsize)
+        # __call__ of patch provides image and label
+        if self.use_patches:
+            patch = self.patches[idx]
+        else:
+            if idx >= len(self.wsi_dataset.get_patches()):
+                print("stop") 
+            patch = self.wsi_dataset.get_patches()[idx]
         
         # get patch idx in memory
-        patch_batch_idx = [Memory.get_memory_idx(patch=patch,
-                                          k=self.wsi_dataset.k_neighbours) 
-                           for patch in patch_batch]
-        
+        patch_idx = Memory.get_memory_idx(patch=patch,
+                                          k=self.wsi_dataset.k_neighbours)
         # get k-neighbourhood patch idxs in memory
-        patch_batch_neighbour_idxs = [Memory.get_neighbour_memory_idxs(k=self.wsi_dataset.k_neighbours,
+        patch_neighbour_idxs = Memory.get_neighbour_memory_idxs(k=self.wsi_dataset.k_neighbours,
                                                                 patch=patch)
-                                      for patch in patch_batch]
         
-        patch_batch_img, batch_label = zip(*[patch() for patch in patch_batch])
+        patch_img, label = patch()
+        
+        with self.wsi_dataset.patch_label_mode('distribution'):
+            dist = patch.get_label()
       
         if self.transform is not None:
-            patch_batch_img = [self.transform(patch_img) for patch_img in patch_batch_img]
+            patch_img = self.transform(patch_img)
 
-        return patch_batch_img, batch_label, patch_batch_idx, patch_batch_neighbour_idxs
+        return patch_img, label, dist, patch_idx, patch_neighbour_idxs
     
-    # needed for memory fill-up
+    @contextmanager
     def all_patch_mode(self):
         """Set context to receive all patches from wsi (instead of sampled ones).
         """

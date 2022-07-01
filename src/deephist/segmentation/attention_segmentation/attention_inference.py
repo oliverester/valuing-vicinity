@@ -22,7 +22,8 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
     
     # first loop: create neighbourhood embedding memory
     with torch.no_grad():
-        model.eval()
+        if not args.wsi_batch:
+            model.eval()
         if not model.block_memory:
             model.initialize_memory(**data_loader.dataset.wsi_dataset.meta_data['memory'], gpu=gpu)
             model.fill_memory(data_loader=data_loader, gpu=gpu)
@@ -52,13 +53,23 @@ def memory_inference(data_loader,
 
     # second loop: attend freezed neighbourhood memory   
     with torch.no_grad():
-        model.eval()
-        for  images, targets, _, neighbours_idx in data_loader:
+        for batch in data_loader:
+            
+            images = batch['img']
+            targets = batch['mask']
+            neighbours_idx = batch['patch_neighbour_idxs']
+            
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
         
-            logits, attention, k_neighbour_mask = model(images, 
-                                                        neighbours_idx)  
+            result = model(images, 
+                           neighbours_idx) 
+            
+            # access results
+            logits= result['logits']
+            attention= result['attention']
+            k_neighbour_mask= result['neighbour_masks']
+ 
             probs = m(logits)
 
             outputs.append(torch.argmax(probs,dim=1).cpu())

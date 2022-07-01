@@ -456,6 +456,17 @@ class WSIFromFolder():
         self._restricted_patches = patches
         yield(self)
         self._restricted_patches = None
+        
+    @contextmanager
+    def patch_label_mode(self, label_type):
+        """Set context to receive all patches from wsi (instead of sampled ones).
+        """
+        assert(label_type in ['patch', 'image', 'mask', 'distribution'])
+
+        default_type = self.wsi_dataset.patch_label_type
+        self.wsi_dataset.patch_label_type = label_type
+        yield(self)
+        self.wsi_dataset.patch_label_type = default_type
 
     
 def get_regions_json(path: Union[str, Path],

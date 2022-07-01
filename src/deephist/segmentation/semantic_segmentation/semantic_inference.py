@@ -25,11 +25,18 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
     m = nn.Softmax(dim=1).cuda(gpu)
 
     with torch.no_grad():
-        for images, targets in data_loader:
+        for batch in data_loader:
+            
+            images = batch['img']
+            targets = batch['mask']
+            
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
             # compute output
-            logits = model(images)
+            result = model(images)
+            
+            logits = result['logits']
+            
             probs = m(logits)
             
             outputs.append(torch.argmax(probs,dim=1).cpu())

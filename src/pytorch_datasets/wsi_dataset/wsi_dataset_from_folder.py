@@ -616,7 +616,7 @@ class WSIDatasetFolder:
         default_type = self.patch_label_type
         self.patch_label_type = label_type
         yield(self)
-        self. patch_label_type = default_type
+        self.patch_label_type = default_type
 
     @contextmanager
     def embedding_mode(self):

@@ -1,5 +1,0 @@
-test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/w163_d16
-reload-model-folder: /homes/oester/repositories/valuingvicinity/logdir_reg/a_d16_k8_unet_dropout1/attention_segmentation-2022-06-02_08_39_25
-folds: [0]
-include-val-inference: False
-gpu: 2

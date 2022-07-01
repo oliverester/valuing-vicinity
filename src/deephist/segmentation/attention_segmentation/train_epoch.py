@@ -66,7 +66,8 @@ def train_epoch(exp: Experiment,
             
             # switch to train mode
             model.train()
-            if args.model_train:
+            if args.wsi_batch:
+                # run in train mode, set flag-alternative
                 model.use_eval_mem = False
 
             torch.set_grad_enabled(True)
@@ -75,10 +76,11 @@ def train_epoch(exp: Experiment,
             big_data_loader = data_loader
 
             # to reproduce "old" repository
-            if args.model_train is not True or epoch == 0:
-                model.eval()
-            else:
+            if args.wsi_batch:
+                # run in train mode, set flag-alternative
                 model.use_eval_mem = True
+            else:
+                model.eval()
             torch.set_grad_enabled(False)
         
         epoch_dice_nominator = 0
@@ -93,21 +95,29 @@ def train_epoch(exp: Experiment,
             # initialize patch memory for train/val set
             model.block_memory = False
             model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
-            with eval_mode(model, on=args.fill_in_eval): # check if filling memory should be done in eval
-                model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False, use_phase=phase)
+            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False, use_phase=phase)
         else:
             model.block_memory = True # block to not query it in first epoch (e.g. in evalution phase)
             
-        for images, labels, _, neighbours_idx in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+        for batch in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
+              
+            images = batch['img']
+            labels = batch['mask']
+            neighbours_idx = batch['patch_neighbour_idxs']
             
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
                 neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
 
-                logits, attention, k_neighbour_mask = model(images=images_gpu,
-                                                            neighbours_idx=neighbours_idx
-                                                            )         
+            result = model(images=images_gpu,
+                           neighbours_idx=neighbours_idx
+                           ) 
+        
+            # access results
+            logits= result['logits']
+            attention= result['attention']
+            k_neighbour_mask= result['neighbour_masks']
 
             if args.combine_criterion_after_epoch is not None:
                 loss = criterion(logits, labels_gpu, epoch)
@@ -162,14 +172,3 @@ def train_epoch(exp: Experiment,
         performance_metric = metric_logger.vali_loss.global_avg
     return performance_metric
 
-
-@contextmanager
-def eval_mode(model, on: bool):
-    """Provides a context of model in eval setting. Afterwards, the previous state is reset.
-    """
-    if on:
-        current_mode = model.training
-        model.training = False  
-    yield
-    if on:           
-        model.training = current_mode

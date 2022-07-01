@@ -25,7 +25,12 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
     m = torch.nn.Softmax(dim=1).cuda(gpu)
 
     with torch.no_grad():
-        for images, context_images, targets in data_loader:
+        for batch in data_loader:
+            
+            images = batch['img']
+            targets = batch['mask']
+            context_images = batch['context_img']
+            
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
                 context_images = context_images.cuda(gpu, non_blocking=True)

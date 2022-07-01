@@ -1,6 +1,7 @@
 """
 Run supervised ML-experiment
 """
+from contextlib import contextmanager
 from typing import Dict
 
 import torch
@@ -19,19 +20,20 @@ from src.exp_management.experiment.Experiment import Experiment
 from src.pytorch_datasets.label_handler import LabelHandler
 
 
-def train_epoch(exp: Experiment,
-                holdout_set: HoldoutSet,
-                model: nn.Module,
-                criterion: _Loss,
-                optimizer: torch.optim.Optimizer,
-                label_handler: LabelHandler,
-                epoch: int,
-                args: Dict,
-                writer: SummaryWriter) -> float:
-    """Train the model on train-dataloader. Evaluate on val-dataloader
+def train_epoch_helper(exp: Experiment,
+                       holdout_set: HoldoutSet,
+                       model: nn.Module,
+                       criterion: _Loss,
+                       optimizer: torch.optim.Optimizer,
+                       label_handler: LabelHandler,
+                       epoch: int,
+                       args: Dict,
+                       writer: SummaryWriter
+                       ) -> float:
+    """Given the holdout-set: Train the model on train-dataloader. Evaluate on val-dataloader
 
     Args:
-        data_loaders (List[DataLoader]): [description]
+        holdout_set (holdout_set]): [description]
         model (nn.Module): [description]
         criterion (_Loss): [description]
         optimizer (torch.optim.Optimizer): [description]
@@ -41,7 +43,7 @@ def train_epoch(exp: Experiment,
         writer (writer): [description]
 
     Returns:
-        float: Average validation loss after training step
+        float: Average validation performance (smaller is better) after training step
     """
     
     for phase in ['train', 'vali']:
@@ -52,68 +54,97 @@ def train_epoch(exp: Experiment,
                                               args=args)
         
         initialize_logging(metric_logger=metric_logger,
-                           phase=phase)
-        
+                           phase=phase,
+                           num_heads=args.num_attention_heads)
+
         header = f'{phase} GPU {args.gpu} Epoch: [{epoch}]'
 
         if phase == 'train':
+            data_loader = holdout_set.train_loader
+            # for fast embedding inference: higher batch size - no grads
+            big_data_loader = holdout_set.big_train_loader
+            
             # switch to train mode
             model.train()
-            torch.set_grad_enabled(True)
-            
-            data_loader = holdout_set.train_loader
-        else:
-            model.eval()
-            torch.set_grad_enabled(False)
-            data_loader = holdout_set.vali_loader
+            if args.wsi_batch:
+                model.use_eval_mem = False
 
+            torch.set_grad_enabled(True)
+        else:
+            data_loader = holdout_set.vali_loader
+            big_data_loader = data_loader
+
+            # to reproduce "old" repository
+            if args.wsi_batch is not True:
+                model.eval()
+            else:
+                model.use_eval_mem = True
+            torch.set_grad_enabled(False)
+        
         epoch_dice_nominator = 0
         epoch_dice_denominator = 0
         sample_images = None
         sample_labels = None
         sample_preds = None
         
+        # in first epoch, ignore embeddings memory
+        # then, fill embedding memory
+        if epoch > 0:
+            # initialize patch memory for train/val set
+            model.block_memory = False
+            model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
+            model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False, use_phase=phase)
+        else:
+            model.block_memory = True # block to not query it in first epoch (e.g. in evalution phase)
+            
         for batch in metric_logger.log_every(data_loader, args.print_freq, epoch, header, phase):
             
             images = batch['img']
             labels = batch['mask']
-        
+            dist = batch['dist']
+            neighbours_idx = batch['patch_neighbour_idxs']
+            
             if args.gpu is not None:
                 images_gpu = images.cuda(args.gpu, non_blocking=True)
                 labels_gpu = labels.cuda(args.gpu, non_blocking=True)
-            # compute output and loss
-            result = model(images_gpu)
+                dist = dist.cuda(args.gpu, non_blocking=True)
+                neighbours_idx = neighbours_idx.cuda(args.gpu, non_blocking=True)
+
+            result = model(images=images_gpu, neighbours_idx=neighbours_idx)      
             
-            logits = result['logits']
-            
-            if args.combine_criterion_after_epoch is not None:
-                loss = criterion(logits, labels_gpu, epoch)
-            else:
-                loss = criterion(logits, labels_gpu)
+            # access results
+            logits= result['logits']
+            cls_logits= result['cls_logits']
+            attention= result['attention']
+            k_neighbour_mask= result['neighbour_masks']
+
+            loss = criterion(logits, cls_logits, labels_gpu, dist)
                 
-            # compute gradiemt and do SGD step
+            # compute gradient and do SGD step
             if phase == 'train':
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-            
-            if sample_images is None:
-                sample_images = exp.unnormalize(images)
-                sample_labels = labels
-                sample_preds = logits.cpu().argmax(axis=1)
-                
+                                            
             step_dice_nominator, step_dice_denominator = log_step(phase=phase,   
                                                                   metric_logger=metric_logger,
                                                                   loss=loss,
                                                                   logits_gpu=logits,
                                                                   labels_gpu=labels_gpu,
                                                                   images=images,
+                                                                  attention_gpu=attention, 
+                                                                  neighbour_masks=k_neighbour_mask,
                                                                   args=args)
             
             # add up dice nom and denom over one epoch to get "epoch-dice-score" - different to WSI-dice score!
             epoch_dice_nominator += step_dice_nominator
             epoch_dice_denominator += step_dice_denominator
-        
+                
+            if sample_images is None:
+                sample_images = exp.unnormalize(images)
+                sample_labels = labels
+                sample_preds = logits.detach().argmax(axis=1).cpu()
+                
         #after epoch is finished:        
         log_epoch(phase=phase,
                   metric_logger=metric_logger, 
@@ -127,7 +158,7 @@ def train_epoch(exp: Experiment,
                   label_handler=label_handler,
                   epoch=epoch,
                   args=args)
-            
+
         print(f"Averaged {phase} stats:", metric_logger.global_str())
 
     if args.performance_metric == 'dice':

@@ -1,4 +1,6 @@
+from ast import Num
 from contextlib import contextmanager
+from numpy import number
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 import torch
@@ -32,6 +34,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                  learn_pos_encoding: bool = False,
                  attention_on: bool = True,
                  use_transformer: bool = False,
+                 use_helperloss: bool = False,
+                 fill_in_eval: bool = True,
                  online: bool = False
                  ) -> None:
         super().__init__()
@@ -41,6 +45,8 @@ class AttentionSegmentationModel(torch.nn.Module):
         self.use_central_attention = use_central_attention
         self.attention_input_dim = attention_input_dim
         self.use_transformer = use_transformer
+        self.use_helperloss = use_helperloss
+        self.fill_in_eval = fill_in_eval
         
         if self.attention_on:
             self.block_memory = False # option to skip memory attention in forward-pass
@@ -91,6 +97,11 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               use_pos_encoding=use_pos_encoding,
                                               learn_pos_encoding=learn_pos_encoding,
                                               dropout=dropout)
+            if self.use_helperloss:
+                self.classifier = nn.Sequential(
+                                    nn.Dropout(p=0.25),
+                                    nn.Linear(in_features=attention_input_dim, out_features=number_of_classes),
+                                  )
             
             self._use_eval_mem = None
            
@@ -167,11 +178,16 @@ class AttentionSegmentationModel(torch.nn.Module):
         # no matter what, enforce all patch mode to create complete memory
         with data_loader.dataset.all_patch_mode():
             with torch.no_grad():
-                for images, _, patches_idx, _ in tqdm(data_loader):
+                for batch in tqdm(data_loader):
+                    
+                    images = batch['img']
+                    patches_idx = batch['patch_idx']
+                    
                     images = images.cuda(gpu, non_blocking=True)
                     
-                    embeddings = self(images,
-                                      return_embeddings=True)
+                    with self.eval_mode(): # check if filling memory should be done in eval
+                        embeddings = self(images,
+                                          return_embeddings=True)
                     if debug:
                         raise Exception("should not be used")
                         # replace with forward-running patch idx
@@ -179,20 +195,23 @@ class AttentionSegmentationModel(torch.nn.Module):
                         # embeddings = e.type(torch.float32).to(embeddings.device)
                         
                     memory.update_embeddings(patches_idx=patches_idx,
-                                                  embeddings=embeddings)
+                                             embeddings=embeddings)
             # flag memory ready to use
             memory.set_ready(n_patches=data_loader.dataset.__len__())
     
     @contextmanager
     def eval_mode(self):
-        """Provides a context of model in eval setting. Afterwards, the previous state is reset.
         """
-        current_mode = self.training
-        self.training = False  
-        yield self            
-        self.training = current_mode
-                
-    
+        Provides a context of model in eval setting. Afterwards, the previous state is reset.
+        """
+        if self.fill_in_eval:
+            current_mode = self.training
+            self.training = False 
+            yield           
+            self.training = current_mode
+        else:
+            yield
+
     @property
     def memory(self):
         
@@ -238,7 +257,7 @@ class AttentionSegmentationModel(torch.nn.Module):
             Either embeddings tensor - or tuple of prediction masks, attention maps and binary neighbour masks tensors
         """
         # set default values
-        attention = neighbour_masks = None
+        attention = neighbour_masks = cls_logits = None
         
         # segmentation encoder
         features = self.base_model.encoder(images)
@@ -301,6 +320,11 @@ class AttentionSegmentationModel(torch.nn.Module):
                                                                kv=neighbour_embeddings,
                                                                mask=k_neighbour_masks,
                                                                return_attention=True)
+                    
+                # helper loss for classification 
+                if self.use_helperloss:
+                    cls_logits = self.classifier(attended_embeddings.squeeze(dim=1))
+                    
                 # f_fuse:
                 # concatinate attended embeddings to encoded features      
                 attended_embeddings = torch.squeeze(attended_embeddings, 1)
@@ -316,9 +340,19 @@ class AttentionSegmentationModel(torch.nn.Module):
         # segmentation decoder    
         decoder_output = self.base_model.decoder(*features)
         # segmentation head
-        masks = self.base_model.segmentation_head(decoder_output)
+        logits = self.base_model.segmentation_head(decoder_output)
         
-        if self.attention_on:
-            return masks, attention, neighbour_masks
+        if self.attention_on and self.use_helperloss:
+             return {'logits': logits,
+                     'cls_logits': cls_logits, 
+                     'attention': attention, 
+                     'neighbour_masks': neighbour_masks
+                    }
+        elif self.attention_on:
+            return {'logits': logits,
+                    'attention': attention, 
+                    'neighbour_masks': neighbour_masks
+                   }
         else:
-            return masks
+            return {'logits': logits}
+    
