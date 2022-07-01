@@ -18,25 +18,24 @@ class AttentionSegmentationConfig(Config):
 
         parser = configargparse.ArgumentParser(description='PyTorch Training',
                                                default_config_files=self.config_paths)
-        parser.add_argument('-d', '--train-data', default=None,
-                            metavar='DIR', help='path to train dataset')
+        parser.add_argument('--train-data', default=None,
+                            help='path to train dataset')
         parser.add_argument('--test-data', default=None,
-                            metavar='DIR', help='path to test dataset. Optional.')
+                            help='path to test dataset. Optional.')
         parser.add_argument('--vali-split', default=None, type=float, 
                             help='ratio to split valiset from trainset')
-        parser.add_argument('--arch', metavar='ARCH', default='unet',
+        parser.add_argument('--arch', default='unet',
                             choices=['unet', 'unetplusplus', 'deeplabv3',
                                      'manet', 'linknet', 'fpn', 'pspnet',
                                      'deeplabv3plus', 'pan'],
                             help='segmentation model architecture')
         parser.add_argument('--encoder', default='resnet50',
                             choices= ['resnet18', 'resnet50', 'resnet101'])
-        parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
+        parser.add_argument('--workers', default=32, type=int,
                             help='number of data loading workers (default: 32)')
-        parser.add_argument('--epochs', default=100, type=int, metavar='N',
+        parser.add_argument('--epochs', default=100, type=int,
                             help='number of total epochs to run')
-        parser.add_argument('-b', '--batch-size', default=512, type=int,
-                            metavar='N',
+        parser.add_argument('--batch-size', default=512, type=int,
                             help='mini-batch size (default: 512), this is the total '
                                 'batch size of all GPUs on the current node when '
                                 'using Data Parallel or Distributed Data Parallel')
@@ -44,15 +43,15 @@ class AttentionSegmentationConfig(Config):
                             help='mini-batch size for validation run')
         parser.add_argument('--test-batch-size', default=None, type=int,
                             help='mini-batch size for test run. If None, uses validation batch size.')
-        parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
-                            metavar='LR', help='initial (base) learning rate', dest='lr')
+        parser.add_argument('--learning-rate', default=0.001, type=float,
+                            help='initial (base) learning rate', dest='lr')
         parser.add_argument('--lr-gamma', default=0.95, type=float, help='gamma of exp learnign rate decay')
         parser.add_argument('--adjust-lr', action='store_true', default=False,
                             help='select to adjust learning rate.')
-        parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+        parser.add_argument('--momentum', default=0.9, type=float,
                             help='momentum of SGD solver')
-        parser.add_argument('-p', '--print-freq', default=20, type=int,
-                            metavar='N', help='print frequency (default: 20)')
+        parser.add_argument('--print-freq', default=20, type=int,
+                            help='print frequency (default: 20)')
         parser.add_argument('--seed', default=None, type=int,
                             help='seed for initializing training. ')
         parser.add_argument('--include-val-inference', action='store_true', default=False,
@@ -168,8 +167,6 @@ class AttentionSegmentationConfig(Config):
                             help='Set to use position encoding in MSA.')
         parser.add_argument('--learn-pos-encoding', action='store_true',
                             help='Set to activate learnable position encoding.')
-        parser.add_argument('--use-linear-proj', action='store_true',
-                            help='Set to use apply linear proj to attention hidden dim before MSA.')
         parser.add_argument('--use-self-attention', action='store_true',
                             help='Set to consider central patch with respect to neighbour patches in MSA.')
         parser.add_argument('--use-transformer', action='store_true',
@@ -178,8 +175,6 @@ class AttentionSegmentationConfig(Config):
                             help='Set to create neighbour embs in real time (instead of memory).')
         parser.add_argument('--log-details', action='store_true',
                             help='Set to log computation-intense metrics.')
-        parser.add_argument('--memory-to-gpu', action='store_true',
-                            help='Set to move the embedding memory to gpu.')
         parser.add_argument('--performance-metric', default='loss', type=str,
                             choices= ['loss', 'dice'],
                             help='Select a performance metric for early stopping and model selection.')
