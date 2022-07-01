@@ -465,8 +465,7 @@ class HoldoutSet():
                                 
                 self.test_torch_dataset = self.data_provider.dataset_type(
                     wsi_dataset=self.test_wsi_dataset,
-                    transform=self.data_provider.vali_aug_transform,
-                    patch_batchsize=self.data_provider.test_batch_size)
+                    transform=self.data_provider.vali_aug_transform)
                
                 self.test_loader = torch.utils.data.DataLoader(
                     self.test_torch_dataset,
