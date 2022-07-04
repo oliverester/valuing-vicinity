@@ -25,12 +25,14 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                  config_path: str,
                  config_parser: Type[Config],
                  testmode: bool = False,
-                 prefix: str = 'exp'
+                 prefix: str = 'exp',
+                 **kwargs
                  ) -> None:
         super().__init__(config_path=config_path,
                          config_parser=config_parser,
                          prefix=prefix,
-                         testmode=testmode)
+                         testmode=testmode,
+                         **kwargs)
         
 
     @abstractmethod

@@ -28,11 +28,13 @@ class Experiment(metaclass=ABCMeta):
                  config_path: str,
                  config_parser: Type[Config],
                  testmode: bool = False,
-                 prefix: str = 'exp'
+                 prefix: str = 'exp',
+                 **kwargs
                  ) -> None:
         
         self.testmode = testmode
         config = config_parser(config_paths=[config_path])
+        
         self.config_path = config_path
         self.prefix = prefix
         self.args = config.parse_config(testmode=testmode)
@@ -48,10 +50,16 @@ class Experiment(metaclass=ABCMeta):
             self.new = True
             self.model_name = prefix + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now() )
 
+        # if kwargs exist, try to replace in config:
+        for key, value in kwargs.items():
+            if key in self.args:
+                setattr(self.args, key, value)
+            else:
+                raise Exception(f"Key {key} does not exist in config. Cannot replace")
+        
         if 'logdir' in self.args and not testmode:
             
             self.args.logdir = str(Path(self.args.logdir) / self.model_name)
-                
             self.set_log_path(log_path=Path(self.args.logdir))
             
         if self.args.seed is not None:  
@@ -100,7 +108,7 @@ class Experiment(metaclass=ABCMeta):
         """
     
     def merge_fold_logs(self, fold_logs: List[Dict]):
-        print("merge and log to tensorboard here")
+        print("Merge folds..")
         val_scores = {'wsi_mean_dice_scores': [], 
                        'class_mean_dice_scores': [], 
                        'wsi_mean_jaccard_scores': [], 
@@ -128,7 +136,7 @@ class Experiment(metaclass=ABCMeta):
         for fold in range(len(fold_logs)):
             for phase in ['vali_best', 'test']:
                 for score in scores[phase].keys():
-                    scores[phase][score].append(fold_logs[fold][f'evaluation_wsi_{phase}_epoch_0_set'][score])
+                    scores[phase][score].append(fold_logs[fold][f'evaluation_wsi_{phase}_set'][score])
         
         # mean / std
         for phase in ['vali_best', 'test']:
@@ -142,7 +150,7 @@ class Experiment(metaclass=ABCMeta):
         writer = SummaryWriter(self.args.log_path)
         for phase in ['vali_best', 'test']:
             for score in scores[phase].keys():
-                writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_agg_{score}_mean',
+                writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_mean_{score}',
                                   scalar_value=scores[phase][score]['mean'])
         
     def get_log(self) -> Dict:
