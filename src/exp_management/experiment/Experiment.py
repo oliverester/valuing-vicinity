@@ -5,13 +5,14 @@ Experiment offers help to manage configs and tracking of ML-experiments
 import datetime
 from pathlib import Path
 import random
-from typing import Counter, Type
+from typing import Counter, Dict, List, Type
 import warnings
 import yaml
 
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
+from torch.utils.tensorboard import SummaryWriter
 
 from src.exp_management import tracking
 from src.exp_management.config import Config
@@ -98,6 +99,58 @@ class Experiment(metaclass=ABCMeta):
             DataProvider: WSI DataProvider
         """
     
+    def merge_fold_logs(self, fold_logs: List[Dict]):
+        print("merge and log to tensorboard here")
+        val_scores = {'wsi_mean_dice_scores': [], 
+                       'class_mean_dice_scores': [], 
+                       'wsi_mean_jaccard_scores': [], 
+                       'class_mean_jaccard_scores': [], 
+                       'wsi_mean_precision': [],
+                       'class_mean_precision': [],
+                       'wsi_mean_recall': [],
+                       'class_mean_recall': [], 
+                       'global_dice_score': []}
+        
+        test_scores = {'wsi_mean_dice_scores': [], 
+                       'class_mean_dice_scores': [], 
+                       'wsi_mean_jaccard_scores': [], 
+                       'class_mean_jaccard_scores': [], 
+                       'wsi_mean_precision': [],
+                       'class_mean_precision': [],
+                       'wsi_mean_recall': [],
+                       'class_mean_recall': [], 
+                       'global_dice_score': []}
+         
+        scores = {'vali_best': val_scores,
+                  'test': test_scores}
+        
+        # fuse vali_best + test scores
+        for fold in range(len(fold_logs)):
+            for phase in ['vali_best', 'test']:
+                for score in scores[phase].keys():
+                    scores[phase][score].append(fold_logs[fold][f'evaluation_wsi_{phase}_epoch_0_set'][score])
+        
+        # mean / std
+        for phase in ['vali_best', 'test']:
+            for score in scores[phase].keys():
+                assert len(scores[phase][score]) == len(fold_logs) , 'not all metrics of all folds found'
+                scores[phase][score] = {'mean': np.round(np.nanmean(np.array(scores[phase][score])),4).item(),
+                                        'std': np.round(np.nanstd(np.array(scores[phase][score])),4).item()}
+        
+        self.exp_log(fold_aggregates=scores) 
+        # log to tensorboard
+        writer = SummaryWriter(self.args.log_path)
+        for phase in ['vali_best', 'test']:
+            for score in scores[phase].keys():
+                writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_agg_{score}_mean',
+                                  scalar_value=scores[phase][score]['mean'])
+        
+    def get_log(self) -> Dict:
+        if self.logfile_path.exists():
+            with self.logfile_path.open('r') as yamlfile:
+                log_yaml = yaml.safe_load(yamlfile) # Note the safe_load
+        return log_yaml
+        
     def exp_log(self,
                 **kwargs):
         """
@@ -133,7 +186,7 @@ def add_to_dict(dic, key, val):
     if isinstance(val, list):
         dic[key] = val
     elif isinstance(val, dict):
-        dic[key] = dict(val)
+        dic[key] = val
     elif isinstance(val, Counter):
         dic[key] = dict(val)
     elif isinstance(val, object):

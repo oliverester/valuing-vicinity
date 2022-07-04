@@ -78,6 +78,8 @@ def run_kfold_model(cv_set: CvSet,
                                     daemon=False,
                                     start_method='spawn')
     else:
+        main_exp = copy.deepcopy(exp)
+        fold_logs = list()
         for fold_no in range(exp.args.nfold):
             if exp.args.folds is not None:
                 # check fold is defined:
@@ -94,10 +96,12 @@ def run_kfold_model(cv_set: CvSet,
             
             run_holdout(holdout_set=holdout_set,
                         exp=exp)
-            
+            # store logs 
+            fold_logs.append(exp.get_log())
             print(f"Finished fold {holdout_set.fold}")
                    
     # TBD: here aggregate kfold results
+    main_exp.merge_fold_logs(fold_logs)
 
 def run_holdout_model_in_parallel(proc_idx: int,
                                   holdout_sets: List[HoldoutSet],
@@ -369,7 +373,7 @@ def evaluate_model(exp: Experiment,
         writer.add_scalar(tag=f'evaluation/{tag}_wsi_recall', scalar_value=wsi_evaluation['wsi_mean_recall'], global_step=epoch)
         writer.add_scalar(tag=f'evaluation/{tag}_wsi_jaccard', scalar_value=wsi_evaluation['wsi_mean_jaccard_scores'], global_step=epoch)
     
-    exp.exp_log(key=f'evaluation_wsi_{tag}_epoch_{epoch}_set',
+    exp.exp_log(key=f'evaluation_wsi_{tag}_set',
                 value={**wsi_evaluation, **global_evaluation})
     
 
