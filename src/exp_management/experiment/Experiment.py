@@ -30,6 +30,7 @@ class Experiment(metaclass=ABCMeta):
                  config_parser: Type[Config],
                  testmode: bool = False,
                  prefix: str = 'exp',
+                 log_level: int = logging.INFO,
                  **kwargs
                  ) -> None:
         
@@ -72,12 +73,12 @@ class Experiment(metaclass=ABCMeta):
                         'You may see unexpected behavior when restarting '
                         'from checkpoints.')
             
-        self._init_logging()
+        self._init_logging(log_level)
         
-    def _init_logging(self):
+    def _init_logging(self, log_level):
         
         # set up logging to file - see previous section for more details
-        logging.basicConfig(level=logging.DEBUG,
+        logging.basicConfig(level=log_level,
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                             datefmt='%m-%d %H:%M',
                             filename=Path(self.log_path) / 'training.log',
@@ -85,7 +86,7 @@ class Experiment(metaclass=ABCMeta):
         
         # define a Handler which writes INFO messages or higher to the sys.stderr
         console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
+        console.setLevel(log_level)
         # set a format which is simpler for console use
         formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
         # tell the handler to use this format
