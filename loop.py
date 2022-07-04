@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from time import sleep
@@ -17,18 +18,18 @@ if __name__ == '__main__':
         configs_files = [str(p) for p in list(base.glob("*")) if p.is_file()]
         if len(configs_files) > 0:
             config_file = configs_files[0]
-            print(f"Running {config_file}")
+            logging.info(f"Running {config_file}")
             try:
                 run_experiment(exp=SegmentationExperiment(config_path=config_file))
                 # move to success
                 os.rename(config_file, (base / 'success' / Path(config_file).name))
             except Exception as e:
-                print(traceback.format_exc())
-                print(e)
-                print(f"error at {config_file}")
+                logging.info(traceback.format_exc())
+                logging.info(e)
+                logging.info(f"error at {config_file}")
                 # move to error
                 os.rename(config_file, (base / 'error' / Path(config_file).name))
         else:
             sleep(2)
-            print("waiting for configs")
+            logging.info("waiting for configs")
    

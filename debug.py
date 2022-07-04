@@ -6,4 +6,5 @@ if __name__ == '__main__':
                                               sample_size=5,
                                               epochs=2,
                                               warm_up_epochs=0,
-                                              nfold=2))
+                                              nfold=2)
+                   )

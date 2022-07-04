@@ -1,7 +1,7 @@
 """
 Run supervised ML-experiment
 """
-from contextlib import contextmanager
+import logging
 from typing import Dict
 
 import torch
@@ -156,7 +156,7 @@ def train_epoch(exp: Experiment,
                   epoch=epoch,
                   args=args)
 
-        print(f"Averaged {phase} stats:", metric_logger.global_str())
+        logging.info(f"Averaged {phase} stats:", metric_logger.global_str())
 
     if args.performance_metric == 'dice':
         # performance set to (negative) Dice 

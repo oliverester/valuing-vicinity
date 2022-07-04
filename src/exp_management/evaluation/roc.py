@@ -1,4 +1,5 @@
 
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,7 @@ def plot_roc_curve(y_true,
     y_true = np.array(y_true)
 
     auc = roc_auc_score(y_true=y_true, y_score=y_probas[:,true_class])
-    print(f'AUC: {auc}')   
+    logging.info(f'AUC: {auc}')   
     fpr, tpr, _ = roc_curve(y_true=y_true, y_score=y_probas[:,true_class])
     
     df = pd.DataFrame(dict(fpr = fpr, tpr = tpr))

@@ -3,6 +3,7 @@ Experiment offers help to manage configs and tracking of ML-experiments
 """
 
 import datetime
+import logging
 from pathlib import Path
 import random
 from typing import Counter, Dict, List, Type
@@ -70,7 +71,27 @@ class Experiment(metaclass=ABCMeta):
                         'which can slow down your training considerably! '
                         'You may see unexpected behavior when restarting '
                         'from checkpoints.')
-
+            
+        self._init_logging()
+        
+    def _init_logging(self):
+        
+        # set up logging to file - see previous section for more details
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                            datefmt='%m-%d %H:%M',
+                            filename=Path(self.log_path) / 'training.log',
+                            filemode='w')
+        
+        # define a Handler which writes INFO messages or higher to the sys.stderr
+        console = logging.StreamHandler()
+        console.setLevel(logging.INFO)
+        # set a format which is simpler for console use
+        formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+        # tell the handler to use this format
+        console.setFormatter(formatter)
+        # add the handler to the root logger
+        logging.getLogger('').addHandler(console)
 
     def set_fold(self, fold: int):
 
@@ -93,11 +114,11 @@ class Experiment(metaclass=ABCMeta):
 
         self.logfile_path = log_path / (self.prefix + "_log.yml")
 
-        self.args.log_path = str(log_path)
-        self.args.checkpoint_path = str(log_path / 'checkpoints')
+        self.log_path = str(log_path)
+        self.checkpoint_path = str(log_path / 'checkpoints')
         
         if self.new:
-            Path(self.args.checkpoint_path).mkdir(parents=True, exist_ok=True)
+            Path(self.checkpoint_path).mkdir(parents=True, exist_ok=True)
     
     @abstract_attribute
     def data_provider(self):
@@ -108,7 +129,7 @@ class Experiment(metaclass=ABCMeta):
         """
     
     def merge_fold_logs(self, fold_logs: List[Dict]):
-        print("Merge folds..")
+        logging.info("Merge folds..")
         val_scores = {'wsi_mean_dice_scores': [], 
                        'class_mean_dice_scores': [], 
                        'wsi_mean_jaccard_scores': [], 
@@ -147,7 +168,7 @@ class Experiment(metaclass=ABCMeta):
         
         self.exp_log(fold_aggregates=scores) 
         # log to tensorboard
-        writer = SummaryWriter(self.args.log_path)
+        writer = SummaryWriter(self.log_path)
         for phase in ['vali_best', 'test']:
             for score in scores[phase].keys():
                 writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_mean_{score}',

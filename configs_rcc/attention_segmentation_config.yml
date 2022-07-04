@@ -4,7 +4,7 @@ gpu: 2
 workers: 16
 batch-size: 2
 val-batch-size: 2
-epochs: 200
+epochs: 2
 test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d16_test
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/HEEL_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map.json
@@ -20,7 +20,7 @@ normalize: true
 augment: false
 logdir: logdir_test/a_d16_k8_deeplab_normal_online
 evaluate-every: 0
-warm-up-epochs: 5
+warm-up-epochs: 0
 early-stopping-epochs: 10
 criterion: 'cross_entropy'
 use-ce-weights: false

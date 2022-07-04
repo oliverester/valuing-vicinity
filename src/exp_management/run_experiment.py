@@ -3,6 +3,7 @@ Run supervised ML-experiment
 """
 
 import copy
+import logging 
 import math
 import multiprocessing as mp
 import os
@@ -92,13 +93,13 @@ def run_kfold_model(cv_set: CvSet,
             exp.set_fold(fold=holdout_set.fold)
             
             exp.args.fold = holdout_set.fold
-            print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+            logging.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
             
             run_holdout(holdout_set=holdout_set,
                         exp=exp)
             # store logs 
             fold_logs.append(exp.get_log())
-            print(f"Finished fold {holdout_set.fold}")
+            logging.info(f"Finished fold {holdout_set.fold}")
                    
     # TBD: here aggregate kfold results
     main_exp.merge_fold_logs(fold_logs)
@@ -125,12 +126,12 @@ def run_holdout_model_in_parallel(proc_idx: int,
     exp.set_fold(fold=holdout_set.fold)
     
     exp.args.fold = holdout_set.fold
-    print(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+    logging.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
     
     run_holdout(holdout_set=holdout_set,
                 exp=exp)
     
-    print(f"Finished fold {holdout_set.fold}")
+    logging.info(f"Finished fold {holdout_set.fold}")
     # free gpu again
     gpu_queue.put(exp.args.gpu)
 
@@ -149,15 +150,15 @@ def run_holdout(exp: Experiment,
     #log holdout details to experiment
     exp.exp_log(holdout_set = holdout_set.metadata)
     
-    writer = SummaryWriter(exp.args.log_path)
+    writer = SummaryWriter(exp.log_path)
         
     if exp.args.reload_model_folder is None:
         train_holdout_model(holdout_set=holdout_set,
                             exp=exp,
                             writer=writer)
-        reload_from = exp.args.log_path
+        reload_from = exp.log_path
     else:
-        print(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
+        logging.info(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
         reload_from = exp.args.reload_model_folder
         
     eval_holdout_model(holdout_set=holdout_set,
@@ -191,7 +192,7 @@ def eval_holdout_model(holdout_set: HoldoutSet,
     
     # evaluate best model on val set
     if exp.args.reload_model_folder is None or exp.args.include_val_inference is True:
-        print("Evaluating final validation wsis")
+        logging.info("Evaluating final validation wsis")
         evaluate_model(exp=exp,
                        model=model,
                        wsis=holdout_set.vali_wsi_dataset.wsis,
@@ -231,11 +232,11 @@ def train_holdout_model(holdout_set: HoldoutSet,
 
     model = model.cuda(exp.args.gpu)
 
-    print(model) # print model after SyncBatchNorm  
+    logging.info(model) # print model after SyncBatchNorm  
     count_parameters(model)
     
     if exp.args.gpu is not None:
-        print("Use GPU: {} for training".format(exp.args.gpu))
+        logging.info("Use GPU: {} for training".format(exp.args.gpu))
 
     # define loss function (criterion) and optimizer
     criterion = exp.get_criterion()
@@ -278,12 +279,12 @@ def train_holdout_model(holdout_set: HoldoutSet,
                                 'label_handler': holdout_set.data_provider.label_handler,
                                 'args': exp.args
                                 },
-                        f=os.path.join(exp.args.checkpoint_path,
-                                                'model_best.pth.tar'))
+                        f=os.path.join(exp.checkpoint_path,
+                                       'model_best.pth.tar'))
             else: 
                 bad_epochs += 1
                 if exp.args.early_stopping_epochs is not None and bad_epochs >= exp.args.early_stopping_epochs:
-                    print(f"Early stopping at epoch {epoch}. {bad_epochs} times no val loss improvement.")
+                    logging.info(f"Early stopping at epoch {epoch}. {bad_epochs} times no val loss improvement.")
                     exp.exp_log(early_stopping_epoch=epoch)
                     break # stop epoch loop
             
@@ -349,7 +350,7 @@ def evaluate_model(exp: Experiment,
         log_metrics (bool, optional): Set to True if you want to log tensorboard. Defaults to False.
     """
     
-    print(f"Evaluating {tag} WSIs.")
+    logging.info(f"Evaluating {tag} WSIs.")
           
     # inference for all patches
     global_evaluation =  exp.wsi_inference(wsis=wsis,
@@ -360,7 +361,7 @@ def evaluate_model(exp: Experiment,
     # evaluate on WSI level
     wsi_evaluation = exp.evaluate_wsis(wsis=wsis,
                                        data_provider=exp.data_provider,
-                                       log_path=Path(exp.args.log_path),
+                                       log_path=Path(exp.log_path),
                                        tag=tag,
                                        writer=writer,
                                        save_to_folder=save_to_folder,
@@ -437,6 +438,6 @@ def count_parameters(model: torch.nn.Module) -> int:
         param = parameter.numel()
         table.add_row([name, param])
         total_params+=param
-    print(table)
-    print(f"Total Trainable Params: {total_params}")
+    logging.info(table)
+    logging.info(f"Total Trainable Params: {total_params}")
     return total_params

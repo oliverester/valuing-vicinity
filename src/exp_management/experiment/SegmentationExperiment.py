@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+import logging
 from pathlib import Path
 
 from fastai.losses import DiceLoss, FocalLoss
@@ -324,7 +325,7 @@ class SegmentationExperiment(MLExperiment):
             
             with wsi.inference_mode(): # too loop over all patches
                 patches = wsi.get_patches()
-                print(f"Inference for WSI {wsi.name}")       
+                logging.info(f"Inference for WSI {wsi.name}")       
                 wsi_loader = data_provider.get_wsi_loader(wsi=wsi)
                 
                 # returns list of batches
@@ -505,7 +506,7 @@ class SegmentationExperiment(MLExperiment):
         
         global_conf_matrix = 0
         for wsi in wsis:
-            print(f"Evaluating WSI {wsi.name}")
+            logging.info(f"Evaluating WSI {wsi.name}")
 
             viz.wsi_plot(tag=tag + "_wsi",
                          mode='truewsi+wsi+heatmap+thumbnail',
@@ -559,7 +560,7 @@ class SegmentationExperiment(MLExperiment):
             wsi_recall_scores_dict[wsi.name] = round(wsi.recall_score, 4)
             
             
-            print(f"{wsi.name} dice scores: {wsi.dice_score_per_class} ({wsi.dice_score})")
+            logging.info(f"{wsi.name} dice scores: {wsi.dice_score_per_class} ({wsi.dice_score})")
         
         #tbd: normalize to 100 % actual per class
         viz.confusion_matrix_img(tag=tag + f"_conf_matrix/conf_matrix_all",
@@ -734,7 +735,7 @@ class SegmentationExperiment(MLExperiment):
         log_wsi_preds['class_mean_recall'] = class_mean_recall_score
         log_wsi_preds['class_std_recall'] = class_std_recall_score
         
-        print(f"Performance: {log_wsi_preds['wsi_mean_dice_scores']} mean-Dice (WSI-wise)")
+        logging.info(f"Performance: {log_wsi_preds['wsi_mean_dice_scores']} mean-Dice (WSI-wise)")
         
         return log_wsi_preds
 

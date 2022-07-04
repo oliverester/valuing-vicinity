@@ -17,7 +17,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_paper/d16_k8_deeplab_mha
+logdir: logdir_paper/d16_k8_deeplab_mha_dice
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5
@@ -37,6 +37,6 @@ attention-hidden-dim: 1024
 use-self-attention: false
 log-details: true
 seed: 13
-performance-metric: loss
+performance-metric: dice
 attention-on: true
 fill-in-eval: true

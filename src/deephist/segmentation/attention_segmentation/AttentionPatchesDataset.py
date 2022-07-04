@@ -70,9 +70,7 @@ class AttentionPatchesDataset(Dataset):
         # __call__ of patch provides image and label
         if self.use_patches:
             patch = self.patches[idx]
-        else:
-            if idx >= len(self.wsi_dataset.get_patches()):
-                print("stop") 
+        else: 
             patch = self.wsi_dataset.get_patches()[idx]
         
         # get patch idx in memory

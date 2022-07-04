@@ -2,21 +2,22 @@
 Provides functionality to track metrics
 and visualize artefacts
 """
-
 from collections import deque, defaultdict
-import cv2
 import datetime
+import logging
 from pathlib import Path
 import random
 from typing import List
-import PIL
-import matplotlib.pyplot as plt
 import numpy as np
 import time
-import torch.distributed as dist
+import yaml
+
+import cv2
+import matplotlib.pyplot as plt
+import PIL
 import torch
 import torch.nn as nn
-import yaml
+
 
 from src.exp_management.helper import get_concat_v
 from src.exp_management.evaluation.tsne import visualize_tsne
@@ -208,13 +209,13 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
-                    print(log_msg.format(
+                    logging.info(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
                         memory=torch.cuda.max_memory_allocated() / MB))
                 else:
-                    print(log_msg.format(
+                    logging.info(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time)))
@@ -223,7 +224,7 @@ class MetricLogger(object):
             
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print('{} Total time: {} ({:.4f} s / it)'.format(
+        logging.info('{} Total time: {} ({:.4f} s / it)'.format(
             header, total_time_str, total_time / len(iterable)))
         if phase == 'train':
             self.update(total_time_train=total_time)
@@ -712,7 +713,7 @@ def timeit(method):
         result = method(*args, **kw)
         te = time.time()
 
-        print('%r %2.2f sec' % \
+        logging.info('%r %2.2f sec' % \
               (method.__name__, te-ts))
         return result
 
@@ -736,7 +737,7 @@ class Timer():
         self._count_table[key] += 1
         
         if self.verbose:
-            print(f'{key}: {round(duration,4)} sec (avg: {round(self._sum_table[key]/ self._count_table[key],4)})')
+            logging.info(f'{key}: {round(duration,4)} sec (avg: {round(self._sum_table[key]/ self._count_table[key],4)})')
         
         #reset start time
         self._start = end_time

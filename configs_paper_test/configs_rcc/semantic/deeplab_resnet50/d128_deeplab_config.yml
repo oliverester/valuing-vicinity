@@ -2,7 +2,7 @@ arch: unet
 encoder: resnet50
 gpu: 2
 workers: 8
-#nfold: 5
+nfold: 5
 batch-size: 32
 val-batch-size: 256
 epochs: 2
@@ -27,6 +27,6 @@ use-ce-weights: false
 overlay-polygons: true
 log-details: true
 seed: 13
-performance-metric: loss
+performance-metric: dice
 attention-on: false
 sample-size: 3

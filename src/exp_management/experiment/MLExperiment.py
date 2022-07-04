@@ -1,6 +1,7 @@
 """
 Experiment offers help to manage configs and tracking of ML-experiments
 """
+import logging
 from abc import abstractmethod
 from pathlib import Path
 from typing import Dict, List, Tuple, Type, Union
@@ -159,7 +160,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                                 epoch=epoch)
                 
                 # evalute meterics with drawn patches (to equal training)
-                print(f"Processing WSI {wsi.name}")
+                logging.info(f"Processing WSI {wsi.name}")
                 patch_prediction.extend(wsi.get_patch_predictions())
                 patch_label.extend(wsi.get_patch_labels(org=False))
                 patch_wsi.extend([wsi.name] * len(wsi.get_patch_predictions()))
@@ -170,7 +171,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                 tmp_dict = dict()
                 tmp_dict[wsi.name] = wsi.get_pred_dict()
                 log_wsi_preds.append(tmp_dict)
-                print(f"{wsi.name} image prediction is {tmp_dict[wsi.name]} - real: {wsi.get_label()}")
+                logging.info(f"{wsi.name} image prediction is {tmp_dict[wsi.name]} - real: {wsi.get_label()}")
 
 
         if exp.args.number_of_classes == 2 and data_provider.patch_label_type != 'mask':

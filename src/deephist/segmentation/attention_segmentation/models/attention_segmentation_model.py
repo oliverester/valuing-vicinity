@@ -1,6 +1,6 @@
-from ast import Num
 from contextlib import contextmanager
-from numpy import number
+import logging
+
 from segmentation_models_pytorch import create_model
 from segmentation_models_pytorch.base.modules import Conv2dReLU
 import torch
@@ -163,12 +163,12 @@ class AttentionSegmentationModel(torch.nn.Module):
             
         if is_training:
             if not hasattr(self, 'train_memory') or reset:
-                print("Initializing train memory")
+                logging.info("Initializing train memory")
                 train_memory = Memory(**memory_params, is_eval=False, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
             if not hasattr(self, 'val_memory') or reset:
-                print("Initializing eval memory")
+                logging.info("Initializing eval memory")
                 val_memory = Memory(**memory_params, is_eval=True, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
 
@@ -201,7 +201,7 @@ class AttentionSegmentationModel(torch.nn.Module):
         #reset memory first to ensure consistency
         memory._reset()
         
-        print("Filling memory..")
+        logging.info("Filling memory..")
         
         # no matter what, enforce all patch mode to create complete memory
         with data_loader.dataset.all_patch_mode():

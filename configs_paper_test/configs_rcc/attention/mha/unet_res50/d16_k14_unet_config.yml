@@ -17,7 +17,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_paper/d16_k14_unet_mha
+logdir: logdir_paper/a_d16_k14_unet_mha
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 0

@@ -1,3 +1,4 @@
+import logging
 from typing import List, Union,Tuple
 
 from matplotlib import pyplot as plt, cm
@@ -90,7 +91,7 @@ def visualize_tsne(embeddings: List[np.ndarray],
         lgd = ax.legend(loc=9, bbox_to_anchor=(0.5,0))
 
         # finally, show the plot
-        print(f"Saving tsne result to {save_to}")
+        logging.info(f"Saving tsne result to {save_to}")
         plt.savefig(save_to, bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=300)
     else:
         box = ax.get_position()

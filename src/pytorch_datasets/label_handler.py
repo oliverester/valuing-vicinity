@@ -2,7 +2,9 @@
 Provides the LabelHandler to manage mapping between original
 label and pytorch label
 """
+import logging
 from typing import Dict, List, Union
+
 import numpy as np
 from torch.functional import Tensor
 
@@ -64,7 +66,7 @@ class LabelHandler():
             org_label (int): original (prehist) label
         """
         if org_label not in self.classes and org_label not in self.merged_away_classes:
-            print(f"Adding new label '{org_label}' to LabelHandler")
+            logging.info(f"Adding new label '{org_label}' to LabelHandler")
             if not self.locked:
                 self.classes.append(int(org_label))
                 self.classes.sort() # ensure dict labels are in descending order
@@ -215,7 +217,7 @@ class LabelHandler():
         """
         Set lock to close the LabelHandler for excepting new labels to ensure stable label encoding
         """
-        print(f'LabelHandler: {self}')
+        logging.info(f'LabelHandler: {self}')
         self.locked = True
         self.np_classes = np.array(self.classes)
         self.n_classes = len(self.classes)

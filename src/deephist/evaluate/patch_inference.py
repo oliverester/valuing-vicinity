@@ -1,5 +1,5 @@
  
- 
+import logging 
 from pathlib import Path
 from typing import Dict
 
@@ -23,9 +23,9 @@ def run_patch_inference(exp: Experiment,
     model = exp.get_model()
     if exp.args.folds is not None:
         for fold in exp.args.folds:
-            print(f"Inference for fold {fold}")
+            logging.info(f"Inference for fold {fold}")
             reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder / f"fold_{fold}"
-            exp.args.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
+            exp.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
             
             reload_model(model=model,
                         model_path=reload_from,
