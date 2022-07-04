@@ -21,7 +21,7 @@ def evaluate_details(patch_coordinates,
             try:
                 selected_wsi = [wsi for wsi in wsis if wsi.name == wsi_name][0]
             except Exception as e:
-                logging.info(f"Warning: Cannot find WSI {wsi_name}. Contueing")
+                logging.error(f"Warning: Cannot find WSI {wsi_name}. Contueing")
                 continue
             # build memory on that WSI
             with selected_wsi.inference_mode(): # sets wsi to idx 0 for memory
@@ -60,7 +60,7 @@ def evaluate_details(patch_coordinates,
                                             log_path=exp.args.logdir)
                         
                     except Exception as e:
-                        logging.info(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
+                        logging.error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
                         raise e
   
 if __name__ == "__main__":

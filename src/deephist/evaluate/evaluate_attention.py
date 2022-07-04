@@ -18,7 +18,7 @@ def evaluate_details(patch_coordinates,
             try:
                 selected_wsi = [wsi for wsi in wsis if wsi.name == wsi_name][0]
             except Exception as e:
-                logging.info(f"Warning: Cannot find WSI {wsi_name}. Continuing")
+                logging.error(f"Warning: Cannot find WSI {wsi_name}. Continuing")
                 continue
             # build memory on that WSI
             with selected_wsi.inference_mode(): # initializes memory
