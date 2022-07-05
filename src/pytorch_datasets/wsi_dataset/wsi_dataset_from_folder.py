@@ -20,7 +20,6 @@ from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
-logger = logging.getLogger('exp')
 
 class WSIDatasetFolder:
     """
@@ -326,7 +325,7 @@ class WSIDatasetFolder:
                                                 k=self.sample_size)
             
         for idx, wsi_root in enumerate(self.wsi_root_paths):
-            logger.info(f"Creating WSI object for {wsi_root.name}")
+            logging.getLogger('exp').info(f"Creating WSI object for {wsi_root.name}")
             wsi_label = wsi_root.parts[-2] if self.root_contains_wsi_label else -1
             
             if self.embedding_root is not None:
@@ -361,7 +360,7 @@ class WSIDatasetFolder:
                 wsis.append(wsi)
                 wsi_labels.append(wsi_label)
             else:
-                logger.info(f"Ommitting wsi {wsi.name} because of no relevant patches")
+                logging.getLogger('exp').info(f"Ommitting wsi {wsi.name} because of no relevant patches")
 
         # order wsis list by name
         wsis.sort(key=lambda x: x.name)
@@ -421,9 +420,9 @@ class WSIDatasetFolder:
             with self.patch_label_mode('patch'):
                 tmp_patch_labels = self.patch_labels
                 
-                logger.info(f"sampling modus: {self.patch_sampling}sampling.")
+                logging.getLogger('exp').info(f"sampling modus: {self.patch_sampling}sampling.")
                 label_dist=collections.Counter(tmp_patch_labels)
-                logger.info(f"pre-class-distribution: {label_dist}")
+                logging.getLogger('exp').info(f"pre-class-distribution: {label_dist}")
                 idx_sampling = list()
 
                 if self.patch_sampling == 'under':
@@ -440,7 +439,7 @@ class WSIDatasetFolder:
                     under_sample_size = min(label_dist.values())
                     over_sample_size = max(label_dist.values())
                     _factor = round(np.log(over_sample_size/ under_sample_size) / np.log(2)/2, 2).item()
-                    logger.info(f"Over-sampling factor: {_factor}")
+                    logging.getLogger('exp').info(f"Over-sampling factor: {_factor}")
                     sample_size = round(under_sample_size * np.power(2, _factor)) # balance size
                     
                     if self.exp:
@@ -455,13 +454,13 @@ class WSIDatasetFolder:
                 # random shuffle of indices
                 shuffle(idx_sampling)
                 label_dist=collections.Counter([tmp_patch_labels[idx] for idx in idx_sampling])
-                logger.info(f"post-class-distribution: {label_dist}")
+                logging.getLogger('exp').info(f"post-class-distribution: {label_dist}")
 
                 patches = [self._patches[idx] for idx in idx_sampling]
         else:
             with self.patch_label_mode('patch'):
                 label_dist=collections.Counter(self.patch_labels)
-                logger.info(f"class-distribution: {label_dist}")
+                logging.getLogger('exp').info(f"class-distribution: {label_dist}")
             patches =  self._patches
 
         return patches
@@ -560,7 +559,7 @@ class WSIDatasetFolder:
             split_ratios = [0.8, 0.2]
         assert(isinstance(split_ratios, list) and sum(split_ratios) == 1)
 
-        logger.info("Splitting WSI dataset.")
+        logging.getLogger('exp').info("Splitting WSI dataset.")
         wsi_datasets = []
         
         wsi_labels = self.get_wsi_labels()

@@ -17,7 +17,6 @@ from src.exp_management.data_provider import DataProvider
 from src.lib.better_abc import ABCMeta
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
-logger = logging.getLogger('exp')
 
 class MLExperiment(Experiment, metaclass=ABCMeta):
     """
@@ -162,7 +161,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                                 epoch=epoch)
                 
                 # evalute meterics with drawn patches (to equal training)
-                logger.info(f"Processing WSI {wsi.name}")
+                logging.getLogger('exp').info(f"Processing WSI {wsi.name}")
                 patch_prediction.extend(wsi.get_patch_predictions())
                 patch_label.extend(wsi.get_patch_labels(org=False))
                 patch_wsi.extend([wsi.name] * len(wsi.get_patch_predictions()))
@@ -173,7 +172,7 @@ class MLExperiment(Experiment, metaclass=ABCMeta):
                 tmp_dict = dict()
                 tmp_dict[wsi.name] = wsi.get_pred_dict()
                 log_wsi_preds.append(tmp_dict)
-                logger.info(f"{wsi.name} image prediction is {tmp_dict[wsi.name]} - real: {wsi.get_label()}")
+                logging.getLogger('exp').info(f"{wsi.name} image prediction is {tmp_dict[wsi.name]} - real: {wsi.get_label()}")
 
 
         if exp.args.number_of_classes == 2 and data_provider.patch_label_type != 'mask':

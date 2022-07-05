@@ -12,7 +12,6 @@ from src.deephist.segmentation.attention_segmentation.models.multihead_attention
     MultiheadAttention
 from src.deephist.segmentation.attention_segmentation.models.transformer_model import ViT
 
-logger = logging.getLogger('exp')
 
 class AttentionSegmentationModel(torch.nn.Module):
     
@@ -164,12 +163,12 @@ class AttentionSegmentationModel(torch.nn.Module):
             
         if is_training:
             if not hasattr(self, 'train_memory') or reset:
-                logger.info("Initializing train memory")
+                logging.getLogger('exp').info("Initializing train memory")
                 train_memory = Memory(**memory_params, is_eval=False, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('train_memory', train_memory)
         else:
             if not hasattr(self, 'val_memory') or reset:
-                logger.info("Initializing eval memory")
+                logging.getLogger('exp').info("Initializing eval memory")
                 val_memory = Memory(**memory_params, is_eval=True, gpu=gpu, eval_mem=self.use_eval_mem)
                 super(AttentionSegmentationModel, self).add_module('val_memory', val_memory)
 
@@ -202,7 +201,7 @@ class AttentionSegmentationModel(torch.nn.Module):
         #reset memory first to ensure consistency
         memory._reset()
         
-        logger.info("Filling memory..")
+        logging.getLogger('exp').info("Filling memory..")
         
         # no matter what, enforce all patch mode to create complete memory
         with data_loader.dataset.all_patch_mode():

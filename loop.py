@@ -93,7 +93,7 @@ def run_job_queue(config_folder: str,
     lp.start()
     
     logger = logging.getLogger('loop_logger')
-    logger.info(f"Task list: {configs_files}")
+    logging.getLogger('exp').info(f"Task list: {configs_files}")
       
     torch.multiprocessing.spawn(run_job,
                                 args=(config_queue, gpus, q, kwargs), 
@@ -160,7 +160,7 @@ def logger_thread(q):
 if __name__ == '__main__':
     # needed because only works in spawn mode (fork is default)
     #torch.multiprocessing.set_start_method('spawn', force=True)
-    run_job_queue(gpus=[4,5],
+    run_job_queue(gpus=[2,4],
                   config_folder="configs_paper",
                   kwargs=dict(
                     sample_size= 5,

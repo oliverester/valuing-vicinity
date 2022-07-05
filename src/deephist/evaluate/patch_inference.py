@@ -9,7 +9,6 @@ import src.deephist.evaluate.evaluate_baseline as bs
 from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.run_experiment import reload_model
 
-logger = logging.getLogger('exp')
 
 def run_patch_inference(exp: Experiment,
                         patch_coordinates: Dict,
@@ -25,7 +24,7 @@ def run_patch_inference(exp: Experiment,
     model = exp.get_model()
     if exp.args.folds is not None:
         for fold in exp.args.folds:
-            logger.info(f"Inference for fold {fold}")
+            logging.getLogger('exp').info(f"Inference for fold {fold}")
             reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder / f"fold_{fold}"
             exp.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
             

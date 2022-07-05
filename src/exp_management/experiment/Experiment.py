@@ -19,7 +19,6 @@ from src.exp_management.config import Config
 from src.exp_management.helper import set_seed
 from src.lib.better_abc import ABCMeta, abstract_attribute
 
-logger = logging.getLogger('exp')
 
 class Experiment(metaclass=ABCMeta):
     """
@@ -31,7 +30,7 @@ class Experiment(metaclass=ABCMeta):
                  config_parser: Type[Config],
                  testmode: bool = False,
                  prefix: str = 'exp',
-                 log_level: int = logger.iNFO,
+                 log_level: int = logging.INFO,
                  **kwargs
                  ) -> None:
         
@@ -99,8 +98,8 @@ class Experiment(metaclass=ABCMeta):
         file.setFormatter(formatter)
         
         # add the handler to the root logger
-        logging.getLogger('exp').addHandler(console)      
-        logging.getLogger('exp').addHandler(file)
+         logging.getLogger('exp').addHandler(console)      
+         logging.getLogger('exp').addHandler(file)
 
     def set_fold(self, fold: int):
 
@@ -144,7 +143,7 @@ class Experiment(metaclass=ABCMeta):
         """
     
     def merge_fold_logs(self, fold_logs: List[Dict]):
-        logger.info("Merge folds..")
+        logging.getLogger('exp').info("Merge folds..")
         val_scores = {'wsi_mean_dice_scores': [], 
                        'class_mean_dice_scores': [], 
                        'wsi_mean_jaccard_scores': [], 

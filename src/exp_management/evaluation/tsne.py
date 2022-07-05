@@ -5,7 +5,6 @@ from matplotlib import pyplot as plt, cm
 import numpy as np
 from sklearn.manifold import TSNE
 
-logger = logging.getLogger('exp')
 
 def visualize_tsne(embeddings: List[np.ndarray],
                    label_handler,
@@ -92,7 +91,7 @@ def visualize_tsne(embeddings: List[np.ndarray],
         lgd = ax.legend(loc=9, bbox_to_anchor=(0.5,0))
 
         # finally, show the plot
-        logger.info(f"Saving tsne result to {save_to}")
+        logging.getLogger('exp').info(f"Saving tsne result to {save_to}")
         plt.savefig(save_to, bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=300)
     else:
         box = ax.get_position()

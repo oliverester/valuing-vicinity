@@ -4,7 +4,6 @@ import torch
 from src.deephist.segmentation.attention_segmentation.attention_inference import memory_inference
 from src.exp_management.tracking import Visualizer
 
-logger = logging.getLogger('exp')
 
 def evaluate_details(patch_coordinates,
                      include_k,
@@ -20,11 +19,11 @@ def evaluate_details(patch_coordinates,
             try:
                 selected_wsi = [wsi for wsi in wsis if wsi.name == wsi_name][0]
             except Exception as e:
-                logger.error(f"Warning: Cannot find WSI {wsi_name}. Continuing")
+                logging.getLogger('exp').error(f"Warning: Cannot find WSI {wsi_name}. Continuing")
                 continue
             # build memory on that WSI
             with selected_wsi.inference_mode(): # initializes memory
-                logger.info("Building memory")
+                logging.getLogger('exp').info("Building memory")
                 wsi_loader = exp.data_provider.get_wsi_loader(wsi=selected_wsi)
                 
                 # fill memory
@@ -35,7 +34,7 @@ def evaluate_details(patch_coordinates,
                 for x, y in patch_coordinates:
                     patch = selected_wsi.get_patch_from_position(x,y)
                     if patch is None:
-                        logger.info(f"Patch {x}, {y} does not exist.")
+                        logging.getLogger('exp').info(f"Patch {x}, {y} does not exist.")
                         continue
                     
                     context_patches, _  = patch.get_neighbours(k=include_k)

@@ -28,7 +28,6 @@ from src.exp_management.evaluation.roc import plot_roc_curve
 from src.exp_management.evaluation.prob_hist import plot_prob_hist, plot_score_hist, plot_score_2dhist
 from src.pytorch_datasets.label_handler import LabelHandler
 
-logger = logging.getLogger('exp')
 
 class SmoothedValue(object):
     """
@@ -210,13 +209,13 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
-                    logger.info(log_msg.format(
+                    logging.getLogger('exp').info(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
                         memory=torch.cuda.max_memory_allocated() / MB))
                 else:
-                    logger.info(log_msg.format(
+                    logging.getLogger('exp').info(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time)))
@@ -225,7 +224,7 @@ class MetricLogger(object):
             
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        logger.info('{} Total time: {} ({:.4f} s / it)'.format(
+        logging.getLogger('exp').info('{} Total time: {} ({:.4f} s / it)'.format(
             header, total_time_str, total_time / len(iterable)))
         if phase == 'train':
             self.update(total_time_train=total_time)
@@ -714,7 +713,7 @@ def timeit(method):
         result = method(*args, **kw)
         te = time.time()
 
-        logger.info('%r %2.2f sec' % \
+        logging.getLogger('exp').info('%r %2.2f sec' % \
               (method.__name__, te-ts))
         return result
 
@@ -738,7 +737,7 @@ class Timer():
         self._count_table[key] += 1
         
         if self.verbose:
-            logger.info(f'{key}: {round(duration,4)} sec (avg: {round(self._sum_table[key]/ self._count_table[key],4)})')
+            logging.getLogger('exp').info(f'{key}: {round(duration,4)} sec (avg: {round(self._sum_table[key]/ self._count_table[key],4)})')
         
         #reset start time
         self._start = end_time

@@ -19,7 +19,6 @@ from src.exp_management.data_provider import HoldoutSet
 from src.exp_management.experiment.Experiment import Experiment
 from src.pytorch_datasets.label_handler import LabelHandler
 
-logger = logging.getLogger('exp')
 
 def train_epoch_helper(exp: Experiment,
                        holdout_set: HoldoutSet,
@@ -166,7 +165,7 @@ def train_epoch_helper(exp: Experiment,
                   epoch=epoch,
                   args=args)
 
-        logger.info(f"Averaged {phase} stats:", metric_logger.global_str())
+        logging.getLogger('exp').info(f"Averaged {phase} stats:", metric_logger.global_str())
 
     if args.performance_metric == 'dice':
         # performance set to (negative) Dice 
