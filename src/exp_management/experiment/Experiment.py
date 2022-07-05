@@ -97,9 +97,10 @@ class Experiment(metaclass=ABCMeta):
                             datefmt='%m-%d %H:%M')
         file.setFormatter(formatter)
         
+        logging.getLogger('exp').setLevel(logging.INFO)
         # add the handler to the root logger
-         logging.getLogger('exp').addHandler(console)      
-         logging.getLogger('exp').addHandler(file)
+        logging.getLogger('exp').addHandler(console)      
+        logging.getLogger('exp').addHandler(file)
 
     def set_fold(self, fold: int):
 

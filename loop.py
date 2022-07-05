@@ -93,7 +93,7 @@ def run_job_queue(config_folder: str,
     lp.start()
     
     logger = logging.getLogger('loop_logger')
-    logging.getLogger('exp').info(f"Task list: {configs_files}")
+    logger.info(f"Task list: {configs_files}")
       
     torch.multiprocessing.spawn(run_job,
                                 args=(config_queue, gpus, q, kwargs), 
