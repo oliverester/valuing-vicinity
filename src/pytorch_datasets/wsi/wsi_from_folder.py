@@ -18,6 +18,8 @@ import yaml
 
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
+logger = logging.getLogger('exp')
+
 class WSIFromFolder():
     """
     WSIFromFolder provides functionality to load and access
@@ -352,14 +354,14 @@ class WSIFromFolder():
     def _draw_patches(self) -> List[PatchFromFile]:
         if self.wsi_dataset.draw_patches_per_class is not None:
             draw_idxs = []
-            logging.info(f"Drawing {self.wsi_dataset.draw_patches_per_class} random patches per patch "
+            logger.info(f"Drawing {self.wsi_dataset.draw_patches_per_class} random patches per patch "
                   "class without repetition.")
             patch_labels = [ptc.org_label for ptc in self._patches]
             for tmp_lbl in set(patch_labels):
                 tmp_lbl_idxs = [idx for idx, lbl in enumerate(patch_labels) if tmp_lbl == lbl]
                 # in case the draw size is equal or above the label occurence, select all
                 if self.wsi_dataset.draw_patches_per_class >= len(tmp_lbl_idxs):
-                    logging.info(f"Warning: draw_patches_per_class ({self.wsi_dataset.draw_patches_per_class})"
+                    logger.info(f"Warning: draw_patches_per_class ({self.wsi_dataset.draw_patches_per_class})"
                           f"exceeds patches with class {tmp_lbl} for wsi {self.name} ({len(tmp_lbl_idxs)})")
                     draw_idxs.extend(tmp_lbl_idxs)
                 else:

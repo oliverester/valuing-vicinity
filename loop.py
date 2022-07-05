@@ -43,6 +43,12 @@ def run_job_queue(config_folder: str,
                 'level': 'INFO',
                 'formatter': 'printer',
             },
+            'loop': {
+                'class': 'logging.FileHandler',
+                'filename': 'loop.log',
+                'mode': 'w',
+                'formatter': 'detailed',
+            },
             'success': {
                 'class': 'logging.FileHandler',
                 'filename': 'success.log',
@@ -62,17 +68,17 @@ def run_job_queue(config_folder: str,
             },
              'error_logger': {
                 'handlers': ['error', 'console']
+            },
+             'loop_logger': {
+                'handlers': ['loop', 'console']
             }
         }
     }
     # overwrite log files
     n = datetime.now().strftime("%Y-%m-%d_%H-%H-%S")
-    d['handlers']['success']['filename'] = f'success_log_{n}.log'
-    d['handlers']['error']['filename'] = f'error_log_{n}.log'
-    
-    logging.config.dictConfig(d)
-    lp = threading.Thread(target=logger_thread, args=(q,))
-    lp.start()
+    d['handlers']['success']['filename'] = f'log_{n}_success.log'
+    d['handlers']['error']['filename'] = f'log_{n}_error.log'
+    d['handlers']['loop']['filename'] = f'log_{n}_loop.log'
     
     base = Path(config_folder)
     configs_files = [str(p) for p in list(base.rglob("*")) if p.is_file()]
@@ -85,6 +91,9 @@ def run_job_queue(config_folder: str,
     logging.config.dictConfig(d)
     lp = threading.Thread(target=logger_thread, args=(q,))
     lp.start()
+    
+    logger = logging.getLogger('loop_logger')
+    logger.info(f"Task list: {configs_files}")
       
     torch.multiprocessing.spawn(run_job,
                                 args=(config_queue, gpus, q, kwargs), 
@@ -112,7 +121,10 @@ def run_job(proc_idx: int,
     success_logger.setLevel(logging.DEBUG)
     error_logger = logging.getLogger('error_logger')
     error_logger.addHandler(qh)
-    success_logger.setLevel(logging.DEBUG)
+    error_logger.setLevel(logging.DEBUG)
+    loop_logger = logging.getLogger('loop_logger')
+    loop_logger.addHandler(qh)
+    loop_logger.setLevel(logging.DEBUG)
 
     # get subprocess gpu
     gpu = gpus[proc_idx]
@@ -121,7 +133,9 @@ def run_job(proc_idx: int,
     while config_queue.qsize() > 0:
         config_file = config_queue.get()
         
-        success_logger.info(f"Running {config_file}")
+        loop_logger.info(f"Running {config_file}")
+        loop_logger.info(f"{config_queue.qsize()} tasks left")
+        
         try:
             run_experiment(exp=SegmentationExperiment(config_path=config_file,
                                                       gpu=gpu,
@@ -135,7 +149,6 @@ def run_job(proc_idx: int,
             error_logger.error(e)
             error_logger.error(f"Error: {config_file}")
         
-            
 def logger_thread(q):
     while True:
         record = q.get()
@@ -148,11 +161,12 @@ if __name__ == '__main__':
     # needed because only works in spawn mode (fork is default)
     #torch.multiprocessing.set_start_method('spawn', force=True)
     run_job_queue(gpus=[4,5],
-                 config_folder="configs_paper", #/configs_rcc/semantic/deeplab_resnet50",
-                 kwargs=dict(
+                  config_folder="configs_paper",
+                  kwargs=dict(
                     sample_size= 5,
                     epochs=2,
                     warm_up_epochs=0,
-                    nfold=2,
+                    nfold=5,
+                    folds=[0,1],
                     logdir="logdir_paper/test_runs")
                  )

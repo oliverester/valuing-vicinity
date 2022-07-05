@@ -2,14 +2,12 @@
 import logging
 from pathlib import Path
 
-import torch
-from tqdm import tqdm
-
 from src.deephist.segmentation.multiscale_segmentation.multiscale_inference import do_inference
-
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
 from src.exp_management.run_experiment import reload_model
 from src.exp_management.tracking import Visualizer
+
+logger = logging.getLogger('exp')
 
 def evaluate_details(patch_coordinates,
                      include_k,
@@ -24,7 +22,7 @@ def evaluate_details(patch_coordinates,
             try:
                 selected_wsi = [wsi for wsi in wsis if wsi.name == wsi_name][0]
             except Exception as e:
-                logging.error(f"Warning: Cannot find WSI {wsi_name}. Contueing")
+                logger.error(f"Warning: Cannot find WSI {wsi_name}. Contueing")
                 continue
             # build memory on that WSI
             with selected_wsi.inference_mode(): # sets wsi to idx 0 for memory
@@ -62,7 +60,7 @@ def evaluate_details(patch_coordinates,
                                             log_path=exp.args.logdir)
                         
                     except Exception as e:
-                        logging.error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
+                        logger.error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
                         raise e
 
     

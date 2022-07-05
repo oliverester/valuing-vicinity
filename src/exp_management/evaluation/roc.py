@@ -8,6 +8,7 @@ from plotnine import *
 from sklearn.metrics import roc_auc_score, roc_curve
 import pandas as pd
 
+logger = logging.getLogger('exp')
 
 def plot_roc_curve(y_true,
                    y_probas,
@@ -25,7 +26,7 @@ def plot_roc_curve(y_true,
     y_true = np.array(y_true)
 
     auc = roc_auc_score(y_true=y_true, y_score=y_probas[:,true_class])
-    logging.info(f'AUC: {auc}')   
+    logger.info(f'AUC: {auc}')   
     fpr, tpr, _ = roc_curve(y_true=y_true, y_score=y_probas[:,true_class])
     
     df = pd.DataFrame(dict(fpr = fpr, tpr = tpr))

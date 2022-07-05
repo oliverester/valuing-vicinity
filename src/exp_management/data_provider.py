@@ -17,6 +17,7 @@ from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import \
     WSIDatasetFolder
 
+logger = logging.getLogger('exp')
 
 class DataProvider():
     """
@@ -296,11 +297,11 @@ class DataProvider():
 
             if self.distributed:
                 train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-                logging.info(f"GPU {self.gpu}")
+                logger.info(f"GPU {self.gpu}")
             else:
                 train_sampler = None
 
-            logging.info(f"Train Data set length {len(train_dataset)}")
+            logger.info(f"Train Data set length {len(train_dataset)}")
             train_loader = torch.utils.data.DataLoader(train_dataset,
                                                        batch_size=int(self.batch_size),
                                                        shuffle=True, #(train_sampler is None),
@@ -384,15 +385,15 @@ class HoldoutSet():
         self.metadata['train_wsi_dataset'] = self.train_wsi_dataset.metadata
         self.metadata['vali_wsi_dataset'] = self.vali_wsi_dataset.metadata
 
-        logging.info(f"Train Data set length {self.train_wsi_dataset.metadata['n_drawn_patches']}"
+        logger.info(f"Train Data set length {self.train_wsi_dataset.metadata['n_drawn_patches']}"
             f" patches from {self.train_wsi_dataset.metadata['n_wsis']} wsis")
-        logging.info(f"Vali Data set length {self.vali_wsi_dataset.metadata['n_drawn_patches']}"
+        logger.info(f"Vali Data set length {self.vali_wsi_dataset.metadata['n_drawn_patches']}"
             f" patches from {self.vali_wsi_dataset.metadata['n_wsis']} wsis")
         
         if self.test_wsi_dataset is not None:
             self.metadata["test_wsi_dataset"] = self.test_wsi_dataset.metadata
             
-            logging.info(f"Test Data set length {self.test_wsi_dataset.metadata['n_drawn_patches']}"
+            logger.info(f"Test Data set length {self.test_wsi_dataset.metadata['n_drawn_patches']}"
                 f" patches from {self.test_wsi_dataset.metadata['n_wsis']} wsis")
               
         if self.data_provider.use_wsi_batching:
@@ -493,7 +494,7 @@ class McSet():
         self.holdout_sets = self._create_mc_set()
 
     def _create_mc_set(self):
-        logging.info("Creating Monte-Carlo-Sets")
+        logger.info("Creating Monte-Carlo-Sets")
         runs = []
         wsi_labels = self.wsi_dataset.get_wsi_labels()
         wsis = self.wsi_dataset.get_wsis()
@@ -513,7 +514,7 @@ class McSet():
                 train_wsis[run].extend(lbl_wsis[cutoff:])
                 
         for run in range(self.runs):
-            logging.info(f"Monte-Carlo-Set {run}")
+            logger.info(f"Monte-Carlo-Set {run}")
             runs.append(HoldoutSet(
                 train_wsi_dataset=self.wsi_dataset.get_wsi_dataset_subset(train_wsis[run]),
                 vali_wsi_dataset=self.wsi_dataset.get_wsi_dataset_subset(val_wsis[run]),
@@ -544,7 +545,7 @@ class CvSet():
         """
         Create stratified cross validation datasets.
         """
-        logging.info("Creating Cross-Validation-Sets")
+        logger.info("Creating Cross-Validation-Sets")
         folds = []
         wsi_labels = self.wsi_dataset.get_wsi_labels()
         wsis = self.wsi_dataset.get_wsis()
@@ -570,7 +571,7 @@ class CvSet():
         all_test_wsis = []
         
         for fold in range(self.nfold):
-            logging.info(f"CV-Fold {fold}")
+            logger.info(f"CV-Fold {fold}")
             
             train_wsis = []
             val_wsis = []

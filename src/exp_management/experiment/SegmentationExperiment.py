@@ -37,7 +37,7 @@ from src.pytorch_datasets.label_handler import LabelHandler
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.settings import get_class_weights
 
-
+logger = logging.getLogger('exp')
 
 class SegmentationExperiment(MLExperiment):
     
@@ -134,9 +134,9 @@ class SegmentationExperiment(MLExperiment):
                                     gamma=self.args.gamma)
         elif self.args.criterion == 'ce+dice':
             l = CombinedLoss(l1=super().get_criterion(),
-                                l2=DiceLoss(reduction='mean'),
-                                weight2=self.args.combine_weight,
-                                add_l2_at_epoch=self.args.combine_criterion_after_epoch) 
+                             l2=DiceLoss(reduction='mean'),
+                             weight2=self.args.combine_weight,
+                             add_l2_at_epoch=self.args.combine_criterion_after_epoch) 
         elif self.args.criterion == 'focal+dice':
             l =  CombinedLoss(l1=DiceLoss(reduction='mean'),
                                 l2= FocalLoss(gamma=self.args.gamma),
@@ -325,7 +325,7 @@ class SegmentationExperiment(MLExperiment):
             
             with wsi.inference_mode(): # too loop over all patches
                 patches = wsi.get_patches()
-                logging.info(f"Inference for WSI {wsi.name}")       
+                logger.info(f"Inference for WSI {wsi.name}")       
                 wsi_loader = data_provider.get_wsi_loader(wsi=wsi)
                 
                 # returns list of batches
@@ -506,7 +506,7 @@ class SegmentationExperiment(MLExperiment):
         
         global_conf_matrix = 0
         for wsi in wsis:
-            logging.info(f"Evaluating WSI {wsi.name}")
+            logger.info(f"Evaluating WSI {wsi.name}")
 
             viz.wsi_plot(tag=tag + "_wsi",
                          mode='truewsi+wsi+heatmap+thumbnail',
@@ -560,7 +560,7 @@ class SegmentationExperiment(MLExperiment):
             wsi_recall_scores_dict[wsi.name] = round(wsi.recall_score, 4)
             
             
-            logging.info(f"{wsi.name} dice scores: {wsi.dice_score_per_class} ({wsi.dice_score})")
+            logger.info(f"{wsi.name} dice scores: {wsi.dice_score_per_class} ({wsi.dice_score})")
         
         #tbd: normalize to 100 % actual per class
         viz.confusion_matrix_img(tag=tag + f"_conf_matrix/conf_matrix_all",
@@ -735,7 +735,7 @@ class SegmentationExperiment(MLExperiment):
         log_wsi_preds['class_mean_recall'] = class_mean_recall_score
         log_wsi_preds['class_std_recall'] = class_std_recall_score
         
-        logging.info(f"Performance: {log_wsi_preds['wsi_mean_dice_scores']} mean-Dice (WSI-wise)")
+        logger.info(f"Performance: {log_wsi_preds['wsi_mean_dice_scores']} mean-Dice (WSI-wise)")
         
         return log_wsi_preds
 

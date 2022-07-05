@@ -4,14 +4,13 @@ Experiment offers help to manage configs and tracking of ML-experiments
 
 import datetime
 import logging
+from multiprocessing import current_process
 from pathlib import Path
-import random
 from typing import Counter, Dict, List, Type
 import warnings
 import yaml
 
 import numpy as np
-import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
@@ -19,6 +18,8 @@ from src.exp_management import tracking
 from src.exp_management.config import Config
 from src.exp_management.helper import set_seed
 from src.lib.better_abc import ABCMeta, abstract_attribute
+
+logger = logging.getLogger('exp')
 
 class Experiment(metaclass=ABCMeta):
     """
@@ -30,7 +31,7 @@ class Experiment(metaclass=ABCMeta):
                  config_parser: Type[Config],
                  testmode: bool = False,
                  prefix: str = 'exp',
-                 log_level: int = logging.INFO,
+                 log_level: int = logger.iNFO,
                  **kwargs
                  ) -> None:
         
@@ -50,8 +51,14 @@ class Experiment(metaclass=ABCMeta):
             self.args.logdir = Path(self.args.reload_model_folder).parent
         else:
             self.new = True
-            self.model_name = prefix + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now() )
-
+            self.model_name = prefix + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())
+            
+            # if multiprocessing, tag with process idx to avoid overwriting
+            p = current_process()
+            if p.name != 'MainProcess':
+                rank = p._identity[0]
+                self.model_name += f"_{str(rank)}"
+            
         # if kwargs exist, try to replace in config:
         for key, value in kwargs.items():
             if key in self.args:
@@ -77,13 +84,6 @@ class Experiment(metaclass=ABCMeta):
         
     def _init_logging(self, log_level):
         
-        # set up logging to file - see previous section for more details
-        logging.basicConfig(level=log_level,
-                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                            datefmt='%m-%d %H:%M',
-                            filename=Path(self.log_path) / 'training.log',
-                            filemode='w')
-        
         # define a Handler which writes INFO messages or higher to the sys.stderr
         console = logging.StreamHandler()
         console.setLevel(log_level)
@@ -91,8 +91,16 @@ class Experiment(metaclass=ABCMeta):
         formatter = logging.Formatter('%(processName)-5s %(message)s')
         # tell the handler to use this format
         console.setFormatter(formatter)
+        
+        file = logging.FileHandler(filename=Path(self.log_path) / 'training.log', mode='w')
+        file.setLevel(log_level)
+        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                            datefmt='%m-%d %H:%M')
+        file.setFormatter(formatter)
+        
         # add the handler to the root logger
-        logging.getLogger('').addHandler(console)
+        logging.getLogger('exp').addHandler(console)      
+        logging.getLogger('exp').addHandler(file)
 
     def set_fold(self, fold: int):
 
@@ -104,6 +112,12 @@ class Experiment(metaclass=ABCMeta):
 
     def set_log_path(self, log_path: Path):
         if self.new:
+            if log_path.exists():
+                # can have if job is instantiated at the same time
+                new_log_path = Path((str(log_path[-1]) + str(int(log_path[0])+1)))
+                self.set_log_path(new_log_path)
+                return None
+                
             log_path.mkdir(parents=True, exist_ok=True)
 
             tracking.log_config(log_path, self.config_path)
@@ -130,7 +144,7 @@ class Experiment(metaclass=ABCMeta):
         """
     
     def merge_fold_logs(self, fold_logs: List[Dict]):
-        logging.info("Merge folds..")
+        logger.info("Merge folds..")
         val_scores = {'wsi_mean_dice_scores': [], 
                        'class_mean_dice_scores': [], 
                        'wsi_mean_jaccard_scores': [], 

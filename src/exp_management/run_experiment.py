@@ -26,6 +26,7 @@ from src.exp_management.experiment.Experiment import Experiment
 from src.exp_management.data_provider import CvSet, HoldoutSet
 from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 
+logger = logging.getLogger('exp')
 
 def run_experiment(exp: Experiment
                    ) -> None:
@@ -36,7 +37,7 @@ def run_experiment(exp: Experiment
     """
     
     # only use half of cpu cores
-    torch.set_num_threads(int(os.cpu_count() * 0.5))
+    #torch.set_num_threads(int(os.cpu_count() * 0.5))
     
     args = exp.args
     
@@ -93,13 +94,13 @@ def run_kfold_model(cv_set: CvSet,
             exp.set_fold(fold=holdout_set.fold)
             
             exp.args.fold = holdout_set.fold
-            logging.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+            logger.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
             
             run_holdout(holdout_set=holdout_set,
                         exp=exp)
             # store logs 
             fold_logs.append(exp.get_log())
-            logging.info(f"Finished fold {holdout_set.fold}")
+            logger.info(f"Finished fold {holdout_set.fold}")
                    
     # TBD: here aggregate kfold results
     main_exp.merge_fold_logs(fold_logs)
@@ -126,12 +127,12 @@ def run_holdout_model_in_parallel(proc_idx: int,
     exp.set_fold(fold=holdout_set.fold)
     
     exp.args.fold = holdout_set.fold
-    logging.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
+    logger.info(f"Starting {holdout_set.fold}. fold run on gpu {exp.args.gpu}")
     
     run_holdout(holdout_set=holdout_set,
                 exp=exp)
     
-    logging.info(f"Finished fold {holdout_set.fold}")
+    logger.info(f"Finished fold {holdout_set.fold}")
     # free gpu again
     gpu_queue.put(exp.args.gpu)
 
@@ -158,7 +159,7 @@ def run_holdout(exp: Experiment,
                             writer=writer)
         reload_from = exp.log_path
     else:
-        logging.info(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
+        logger.info(f"Skipping training step and restoring best model from {exp.args.reload_model_folder}")
         reload_from = exp.args.reload_model_folder
         
     eval_holdout_model(holdout_set=holdout_set,
@@ -192,7 +193,7 @@ def eval_holdout_model(holdout_set: HoldoutSet,
     
     # evaluate best model on val set
     if exp.args.reload_model_folder is None or exp.args.include_val_inference is True:
-        logging.info("Evaluating final validation wsis")
+        logger.info("Evaluating final validation wsis")
         evaluate_model(exp=exp,
                        model=model,
                        wsis=holdout_set.vali_wsi_dataset.wsis,
@@ -232,11 +233,11 @@ def train_holdout_model(holdout_set: HoldoutSet,
 
     model = model.cuda(exp.args.gpu)
 
-    logging.info(model) # print model after SyncBatchNorm  
+    logger.info(model) # print model after SyncBatchNorm  
     count_parameters(model)
     
     if exp.args.gpu is not None:
-        logging.info("Use GPU: {} for training".format(exp.args.gpu))
+        logger.info("Use GPU: {} for training".format(exp.args.gpu))
 
     # define loss function (criterion) and optimizer
     criterion = exp.get_criterion()
@@ -284,7 +285,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
             else: 
                 bad_epochs += 1
                 if exp.args.early_stopping_epochs is not None and bad_epochs >= exp.args.early_stopping_epochs:
-                    logging.info(f"Early stopping at epoch {epoch}. {bad_epochs} times no val loss improvement.")
+                    logger.info(f"Early stopping at epoch {epoch}. {bad_epochs} times no val loss improvement.")
                     exp.exp_log(early_stopping_epoch=epoch)
                     break # stop epoch loop
             
@@ -350,7 +351,7 @@ def evaluate_model(exp: Experiment,
         log_metrics (bool, optional): Set to True if you want to log tensorboard. Defaults to False.
     """
     
-    logging.info(f"Evaluating {tag} WSIs.")
+    logger.info(f"Evaluating {tag} WSIs.")
           
     # inference for all patches
     global_evaluation =  exp.wsi_inference(wsis=wsis,
@@ -438,6 +439,6 @@ def count_parameters(model: torch.nn.Module) -> int:
         param = parameter.numel()
         table.add_row([name, param])
         total_params+=param
-    logging.info(table)
-    logging.info(f"Total Trainable Params: {total_params}")
+    logger.info(table)
+    logger.info(f"Total Trainable Params: {total_params}")
     return total_params

@@ -6,7 +6,7 @@ import torch
 
 from src.pytorch_datasets.patch.patch_from_file import PatchFromFile
 
-
+logger = logging.getLogger('exp')
 
 class Memory(torch.nn.Module):
     
@@ -80,9 +80,9 @@ class Memory(torch.nn.Module):
                                 fill_value=0,
                                 dtype=torch.float32, device=f"cuda:{gpu}")
     
-        logging.info(f"Creating embedding memory with dim: {memory.shape}")
+        logger.info(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024
-        logging.info(f"Embedding memory size: {str(round(size_in_gb, 2))} GB")
+        logger.info(f"Embedding memory size: {str(round(size_in_gb, 2))} GB")
         
         self.metadata['memory_size_in_gb'] = size_in_gb
         self.metadata['n_x'] = self.n_x
