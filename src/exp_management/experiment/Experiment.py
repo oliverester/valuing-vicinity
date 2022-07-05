@@ -88,7 +88,7 @@ class Experiment(metaclass=ABCMeta):
         console = logging.StreamHandler()
         console.setLevel(log_level)
         # set a format which is simpler for console use
-        formatter = logging.Formatter('%(message)s')
+        formatter = logging.Formatter('%(processName)-5s %(message)s')
         # tell the handler to use this format
         console.setFormatter(formatter)
         # add the handler to the root logger

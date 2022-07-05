@@ -31,55 +31,51 @@ def run_job_queue(config_folder: str,
             'detailed': {
                 'class': 'logging.Formatter',
                 'format': '%(asctime)s %(name)-15s %(levelname)-8s %(processName)-10s %(message)s'
+            },
+             'printer': {
+                'class': 'logging.Formatter',
+                'format': '%(processName)-10s %(message)s'
             }
         },
         'handlers': {
             'console': {
                 'class': 'logging.StreamHandler',
                 'level': 'INFO',
-            },
-            'file': {
-                'class': 'logging.FileHandler',
-                'filename': 'mplog.log',
-                'mode': 'w',
-                'formatter': 'detailed',
+                'formatter': 'printer',
             },
             'success': {
                 'class': 'logging.FileHandler',
-                'filename': 'mplog-foo.log',
+                'filename': 'success.log',
                 'mode': 'w',
                 'formatter': 'detailed',
             },
             'error': {
                 'class': 'logging.FileHandler',
-                'filename': 'mplog-errors.log',
+                'filename': 'error.log',
                 'mode': 'w',
                 'formatter': 'detailed',
             },
         },
         'loggers': {
             'success_logger': {
-                'handlers': ['success']
+                'handlers': ['success', 'console']
             },
              'error_logger': {
-                'handlers': ['error']
+                'handlers': ['error', 'console']
             }
-        },
-        'root': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file']
-        },
+        }
     }
     # overwrite log files
-    #n = datetime.now().strftime("%Y-%m-%d_%H-%H-%S")
-
+    n = datetime.now().strftime("%Y-%m-%d_%H-%H-%S")
+    d['handlers']['success']['filename'] = f'success_log_{n}.log'
+    d['handlers']['error']['filename'] = f'error_log_{n}.log'
     
     logging.config.dictConfig(d)
     lp = threading.Thread(target=logger_thread, args=(q,))
     lp.start()
     
     base = Path(config_folder)
-    configs_files = [str(p) for p in list(base.glob("*")) if p.is_file()]
+    configs_files = [str(p) for p in list(base.rglob("*")) if p.is_file()]
     
     config_queue = mp.Manager().Queue()
     # initialize config queue
@@ -110,12 +106,13 @@ def run_job(proc_idx: int,
             kwargs):
     
     qh = logging.handlers.QueueHandler(logger_config)
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-    root.addHandler(qh)
-    
+ 
     success_logger = logging.getLogger('success_logger')
+    success_logger.addHandler(qh)
+    success_logger.setLevel(logging.DEBUG)
     error_logger = logging.getLogger('error_logger')
+    error_logger.addHandler(qh)
+    success_logger.setLevel(logging.DEBUG)
 
     # get subprocess gpu
     gpu = gpus[proc_idx]
@@ -129,13 +126,15 @@ def run_job(proc_idx: int,
             run_experiment(exp=SegmentationExperiment(config_path=config_file,
                                                       gpu=gpu,
                                                       **kwargs
-                                                      ))
+                                                      )
+                           )
             success_logger.info(f"Successful: {config_file}")
             
         except Exception as e:
             error_logger.error(traceback.format_exc())
             error_logger.error(e)
             error_logger.error(f"Error: {config_file}")
+        
             
 def logger_thread(q):
     while True:
@@ -145,12 +144,11 @@ def logger_thread(q):
         logger = logging.getLogger(record.name)
         logger.handle(record)
         
-
 if __name__ == '__main__':
     # needed because only works in spawn mode (fork is default)
     #torch.multiprocessing.set_start_method('spawn', force=True)
     run_job_queue(gpus=[4,5],
-                 config_folder="configs_paper_test/configs_rcc/semantic/deeplab_resnet50",
+                 config_folder="configs_paper", #/configs_rcc/semantic/deeplab_resnet50",
                  kwargs=dict(
                     sample_size= 5,
                     epochs=2,
