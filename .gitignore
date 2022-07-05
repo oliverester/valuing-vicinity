@@ -3,4 +3,5 @@
 *.pyc
 /scripts
 /tests
+*.log
 
