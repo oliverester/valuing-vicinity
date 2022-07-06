@@ -94,7 +94,7 @@ class ViT(nn.Module):
                  depth: int, 
                  heads: int, 
                  mlp_dim: int, 
-                 hidde_dim: int,
+                 hidden_dim: int,
                  att_dropout: float = 0.,
                  emb_dropout: float = 0.,
                  use_pos_encoding: bool = True):
@@ -109,7 +109,7 @@ class ViT(nn.Module):
         self.transformer = Transformer(dim=dim, 
                                        depth=depth, 
                                        heads=heads,
-                                       dim_head=hidde_dim // heads,
+                                       dim_head=hidden_dim // heads,
                                        mlp_dim=mlp_dim,
                                        dropout=att_dropout)
 

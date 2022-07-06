@@ -25,12 +25,13 @@ early-stopping-epochs: 10
 criterion: 'cross_entropy'
 use-ce-weights: false
 overlay-polygons: true
-embedding-dim: 1024
+embedding-dim: 512
 k-neighbours: 8
 use-ln: true
 emb-dropout: 0
 att-dropout: 0
 use-pos-encoding: true
+learn-pos-encoding: false
 num-attention-heads: 8
 attention-hidden-dim: 1024
 use-self-attention: false
@@ -39,4 +40,3 @@ seed: 13
 performance-metric: dice
 attention-on: true
 fill-in-eval: true
-use-transformer: true

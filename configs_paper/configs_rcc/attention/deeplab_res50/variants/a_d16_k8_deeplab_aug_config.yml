@@ -29,7 +29,7 @@ embedding-dim: 1024
 k-neighbours: 8
 use-ln: true
 emb-dropout: 0
-att-dropout: 0.25
+att-dropout: 0
 use-pos-encoding: true
 learn-pos-encoding: false
 num-attention-heads: 8

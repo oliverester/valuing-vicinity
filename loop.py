@@ -94,6 +94,8 @@ def run_job_queue(config_folder: str,
     lp.start()
     
     logger = logging.getLogger('loop_logger')
+    logger.setLevel(logging.DEBUG)
+    logger.info(f"Starting job queue for configs in folder {config_folder}")
     logger.info(f"Task list: {configs_files}")
       
     torch.multiprocessing.spawn(run_job,

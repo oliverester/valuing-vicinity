@@ -109,7 +109,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                                        depth=transformer_depth,
                                        heads=num_attention_heads,
                                        mlp_dim=mlp_hidden_dim,
-                                       hidde_dim=attention_hidden_dim,
+                                       hidden_dim=attention_hidden_dim,
                                        emb_dropout=emb_dropout,
                                        att_dropout=att_dropout,
                                        use_pos_encoding=use_pos_encoding,
