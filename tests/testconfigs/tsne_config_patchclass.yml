@@ -1,9 +1,0 @@
-test-data: tests/testdata/PDL1
-embedding-data: tests/testdata/PDL1_embeddings
-image-label-in-path: true
-logdir: logdir_test
-label-map-file: tests/label_map.json
-instance: patchclass
-patch-label-type: patch&img
-draw-patches-per-class: 50
-include-classes: [10, 11]
