@@ -201,6 +201,7 @@ class SegmentationExperiment(MLExperiment):
                                                mlp_hidden_dim=self.args.mlp_hidden_dim,
                                                emb_dropout=self.args.emb_dropout,
                                                att_dropout=self.args.att_dropout,
+                                               context_conv=self.args.context_conv,
                                                online=self.args.online,
                                                use_helperloss=self.args.helper_loss,
                                                fill_in_eval=self.args.fill_in_eval

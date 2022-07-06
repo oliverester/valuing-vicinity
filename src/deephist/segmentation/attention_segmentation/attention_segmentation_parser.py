@@ -149,6 +149,8 @@ class AttentionSegmentationConfig(Config):
                             help='Select number of embedding dim. If None, memory is deactivated.')
         parser.add_argument('--k-neighbours', default=None, type=int,
                             help='Select number of neighbouring patches to attend to.')
+        parser.add_argument('--context-conv', default=1, type=int,
+                            help='Select kernel size of context convolution. Default to 1x1.')
         parser.add_argument('--num-attention-heads', default=None, type=int,
                             help='Select number of attention heads for MSA.')
         parser.add_argument('--attention-hidden-dim', default=1024, type=int,

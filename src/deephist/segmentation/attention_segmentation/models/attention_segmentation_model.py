@@ -32,6 +32,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                  use_pos_encoding: bool = False,
                  use_central_attention: bool = False,
                  learn_pos_encoding: bool = False,
+                 context_conv: int = 1,
                  attention_on: bool = True,
                  use_transformer: bool = False,
                  use_helperloss: bool = False,
@@ -100,9 +101,10 @@ class AttentionSegmentationModel(torch.nn.Module):
             self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
             
             # f_fuse
-            self.conv1x1 = Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
-                                      self.base_model.encoder._out_channels[-1], (1,1),
-                                      use_batchnorm=True)
+            self.context_conv = Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
+                                           self.base_model.encoder._out_channels[-1], 
+                                           (context_conv, context_conv),
+                                           use_batchnorm=True)
             if self.use_transformer:
                 self.transformer = ViT(kernel_size=self.kernel_size,
                                        dim=attention_input_dim,
@@ -360,7 +362,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                 attended_embeddings = attended_embeddings[:,:,None, None].expand(-1, -1, encoder_map.shape[-2], encoder_map.shape[-1])
                 features_with_neighbour_context = torch.cat((features[-1], attended_embeddings),1)
                 # 1x1 conv to merge features to 2048 again
-                features_with_neighbour_context = self.conv1x1(features_with_neighbour_context)
+                features_with_neighbour_context = self.context_conv(features_with_neighbour_context)
                 
                 # exchange feat_l with feat_l'
                 features[-1] = features_with_neighbour_context
