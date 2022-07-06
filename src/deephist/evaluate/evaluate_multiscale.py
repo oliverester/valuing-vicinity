@@ -48,15 +48,15 @@ def evaluate_details(patch_coordinates,
                             
                         viz.plot_wsi_section(section=context_patches,
                                         mode='org',
-                                        log_path=exp.args.logdir)
+                                        log_path=exp.log_path)
                         # gt
                         viz.plot_wsi_section(section=context_patches,
                                             mode='gt',
-                                            log_path=exp.args.logdir)
+                                            log_path=exp.log_path)
                         # pred
                         viz.plot_wsi_section(section=context_patches,
                                             mode='pred',
-                                            log_path=exp.args.logdir)
+                                            log_path=exp.log_path)
                         
                     except Exception as e:
                         logging.getLogger('exp').error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     exp_multiscale = SegmentationExperiment(config_path='/src/deephist/evaluate/configs/multiscale_segmentation_config_inference.yml')
 
     model_multiscale = exp_multiscale.model
-    reload_multiscale_from = Path(exp_multiscale.args.logdir) / exp_multiscale.args.reload_model_folder
+    reload_multiscale_from = Path(exp_multiscale.log_path) / exp_multiscale.args.reload_model_folder
     reload_model(model=model_multiscale,
                  model_path=reload_multiscale_from,
                  gpu=exp_multiscale.args.gpu)

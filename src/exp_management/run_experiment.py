@@ -245,7 +245,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
     if exp.args.adjust_lr is True:
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 
                                                            gamma=exp.args.lr_gamma, 
-                                                           verbose=True)
+                                                           verbose=False)
 
     cudnn.benchmark = True
 
@@ -264,6 +264,7 @@ def train_holdout_model(holdout_set: HoldoutSet,
                                                        args=exp.args)
         if exp.args.adjust_lr is True:
             scheduler.step()
+            logging.getLogger('exp').info(f"Updating learning rate to: {scheduler.get_last_lr()}")
                 
         if (exp.args.warm_up_epochs is None \
                 or epoch >= exp.args.warm_up_epochs):

@@ -50,15 +50,15 @@ def evaluate_details(patch_coordinates,
                             
                         viz.plot_wsi_section(section=context_patches,
                                         mode='org',
-                                        log_path=exp.args.logdir)
+                                        log_path=exp.log_path)
                         # gt
                         viz.plot_wsi_section(section=context_patches,
                                             mode='gt',
-                                            log_path=exp.args.logdir)
+                                            log_path=exp.log_path)
                         # pred
                         viz.plot_wsi_section(section=context_patches,
                                             mode='pred',
-                                            log_path=exp.args.logdir)
+                                            log_path=exp.log_path)
                         
                     except Exception as e:
                         logging.getLogger('exp').error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     exp_baseline = SegmentationExperiment(config_path='/src/deephist/evaluate/configs/baseline_segmentation_config_inference.yml')
 
     model_baseline = exp_baseline.model
-    reload_baseline_from = Path(exp_baseline.args.logdir) / exp_baseline.args.reload_model_folder
+    reload_baseline_from = Path(exp_baseline.log_path) / exp_baseline.args.reload_model_folder
     reload_model(model=model_baseline,
                  model_path=reload_baseline_from,
                  gpu=exp_baseline.args.gpu)

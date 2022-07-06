@@ -25,6 +25,7 @@ def run_patch_inference(exp: Experiment,
     if exp.args.folds is not None:
         for fold in exp.args.folds:
             logging.getLogger('exp').info(f"Inference for fold {fold}")
+            
             reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder / f"fold_{fold}"
             exp.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
             

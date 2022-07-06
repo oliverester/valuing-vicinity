@@ -47,17 +47,19 @@ class Experiment(metaclass=ABCMeta):
             config = config_parser(config_paths= [Path(self.args.reload_model_folder) / 'config.yml', config_path])
             self.args = config.parse_config(testmode=testmode)
             self.model_name = Path(self.args.reload_model_folder).stem
-            self.args.logdir = Path(self.args.reload_model_folder).parent
+            self.base_log_path = Path(self.args.reload_model_folder)
         else:
             self.new = True
-            self.model_name = prefix + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())
-            
+            self.model_name = Path(self.config_path).stem + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())
+                       
             # if multiprocessing, tag with process idx to avoid overwriting
             p = current_process()
             if p.name != 'MainProcess':
                 rank = p._identity[0]
                 self.model_name += f"_{str(rank)}"
-            
+                
+            self.base_log_path = str(Path(self.args.logdir) / str(Path(self.config_path).parent) / self.model_name)
+
         # if kwargs exist, try to replace in config:
         for key, value in kwargs.items():
             if key in self.args:
@@ -67,8 +69,7 @@ class Experiment(metaclass=ABCMeta):
         
         if 'logdir' in self.args and not testmode:
             
-            self.args.logdir = str(Path(self.args.logdir) / self.model_name)
-            self.set_log_path(log_path=Path(self.args.logdir))
+            self.set_log_path(log_path=Path(self.base_log_path))
             
         if self.args.seed is not None:  
             set_seed(self.args.seed)
@@ -82,7 +83,7 @@ class Experiment(metaclass=ABCMeta):
         self._init_logging(log_level)
         
     def _init_logging(self, log_level):
-        
+            
         # define a Handler which writes INFO messages or higher to the sys.stderr
         console = logging.StreamHandler()
         console.setLevel(log_level)
@@ -98,13 +99,16 @@ class Experiment(metaclass=ABCMeta):
         file.setFormatter(formatter)
         
         logging.getLogger('exp').setLevel(logging.INFO)
+        
+        # remove "old" handlers
+        logging.getLogger('exp').handlers.clear()
         # add the handler to the root logger
         logging.getLogger('exp').addHandler(console)      
         logging.getLogger('exp').addHandler(file)
 
     def set_fold(self, fold: int):
 
-        log_path=Path(self.args.logdir) / f"fold_{fold}"
+        log_path=Path(self.base_log_path) / f"fold_{fold}"
         if self.args.reload_model_folder is not None:
             self.args.reload_model_folder =  str(self.args.reload_model_folder / f"fold_{fold}")
 
@@ -112,11 +116,6 @@ class Experiment(metaclass=ABCMeta):
 
     def set_log_path(self, log_path: Path):
         if self.new:
-            if log_path.exists():
-                # can have if job is instantiated at the same time
-                new_log_path = Path((str(log_path[-1]) + str(int(log_path[0])+1)))
-                self.set_log_path(new_log_path)
-                return None
                 
             log_path.mkdir(parents=True, exist_ok=True)
 

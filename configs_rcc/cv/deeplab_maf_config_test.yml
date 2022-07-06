@@ -18,7 +18,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_paper/test_a_d16_k8_deeplab_val_train_mode_val_shuffle_fill_eval
+logdir: logdir_paper
 evaluate-every: 0
 warm-up-epochs: 5
 early-stopping-epochs: 10

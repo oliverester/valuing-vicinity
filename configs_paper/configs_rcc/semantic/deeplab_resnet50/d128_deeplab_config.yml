@@ -17,7 +17,7 @@ adjust-lr: true
 merge-classes: [[10,7]] # cortex, cortex_atrophy
 image-label-in-path: false
 normalize: true
-logdir: logdir_paper/d128_deeplab_res50
+logdir: logdir_paper
 evaluate-every: 0
 n-eval-wsis: 5
 warm-up-epochs: 5
@@ -25,7 +25,7 @@ early-stopping-epochs: 10
 criterion: 'cross_entropy'
 use-ce-weights: false
 overlay-polygons: true
-log-details: true
+log-details: false
 seed: 13
 performance-metric: dice
 attention-on: false

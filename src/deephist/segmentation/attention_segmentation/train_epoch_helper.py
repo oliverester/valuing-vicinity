@@ -165,7 +165,7 @@ def train_epoch_helper(exp: Experiment,
                   epoch=epoch,
                   args=args)
 
-        logging.getLogger('exp').info(f"Averaged {phase} stats:", metric_logger.global_str())
+        logging.getLogger('exp').info(f"Averaged {phase} stats: {metric_logger.global_str()}")
 
     if args.performance_metric == 'dice':
         # performance set to (negative) Dice 

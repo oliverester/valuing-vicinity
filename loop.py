@@ -75,10 +75,11 @@ def run_job_queue(config_folder: str,
         }
     }
     # overwrite log files
+    Path("logs").mkdir(exist_ok=True)
     n = datetime.now().strftime("%Y-%m-%d_%H-%H-%S")
-    d['handlers']['success']['filename'] = f'log_{n}_success.log'
-    d['handlers']['error']['filename'] = f'log_{n}_error.log'
-    d['handlers']['loop']['filename'] = f'log_{n}_loop.log'
+    d['handlers']['success']['filename'] = f'logs/log_{n}_success.log'
+    d['handlers']['error']['filename'] = f'logs/log_{n}_error.log'
+    d['handlers']['loop']['filename'] = f'logs/log_{n}_loop.log'
     
     base = Path(config_folder)
     configs_files = [str(p) for p in list(base.rglob("*")) if p.is_file()]
@@ -158,15 +159,12 @@ def logger_thread(q):
         logger.handle(record)
         
 if __name__ == '__main__':
-    # needed because only works in spawn mode (fork is default)
-    #torch.multiprocessing.set_start_method('spawn', force=True)
-    run_job_queue(gpus=[2,4],
-                  config_folder="configs_paper",
+    run_job_queue(gpus=[3,5],
+                  config_folder="configs_paper/configs_cy16",
                   kwargs=dict(
                     sample_size= 5,
                     epochs=2,
                     warm_up_epochs=0,
                     nfold=5,
-                    folds=[0,1],
-                    logdir="logdir_paper/test_runs")
+                    folds=[0,1])
                  )
