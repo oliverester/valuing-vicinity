@@ -27,5 +27,6 @@ use-ce-weights: false
 overlay-polygons: true
 log-details: false
 seed: 13
+augment: true
 performance-metric: loss
 attention-on: false

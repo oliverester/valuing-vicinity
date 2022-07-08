@@ -100,7 +100,7 @@ def run_job_queue(config_folder: str,
     
     torch.multiprocessing.spawn(run_job,
                                 args=(config_queue, gpu_queue, used_gpu_queue, q, kwargs), 
-                                nprocs=5, # max parallel jobs
+                                nprocs=6, # max parallel jobs
                                 join=True, 
                                 daemon=False,
                                 start_method='spawn')
@@ -250,12 +250,12 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_cy16",
-                  kwargs=dict(
-                    sample_size= 5,
-                    epochs=1,
-                    warm_up_epochs=0,
-                    nfold=5,
-                    folds=[0],
-                    logdir="logdir_paper/test_runs")
+                  config_folder="configs_paper/configs_rcc/semantic",
+                #   kwargs=dict(
+                #     sample_size= 5,
+                #     epochs=1,
+                #     warm_up_epochs=0,
+                #     nfold=5,
+                #     folds=[0],
+                #     logdir="logdir_paper/test_runs")
                  )
