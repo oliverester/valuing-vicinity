@@ -2,11 +2,8 @@ from src.exp_management.experiment.SegmentationExperiment import SegmentationExp
 from src.exp_management.run_experiment import run_experiment
 
 if __name__ == '__main__':
-    run_experiment(exp=SegmentationExperiment(config_path='configs_paper/configs_rcc/attention/mha/deeplab_res50/d16_k8_deeplab_config.yml',
-                                              criterion='ce+dice',
-                                              combine_criterion_after_epoch=10,
-                                              combine_weight=0.5,
+    run_experiment(exp=SegmentationExperiment(config_path='configs_paper/configs_rcc/semantic/deeplab_resnet50/d16_deeplab_config.yml',
                                               folds=[0],
-                                              lr_gamma=0.975),
+                                              gpu=2),
                   )                           
  
