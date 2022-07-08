@@ -41,6 +41,13 @@ class Experiment(metaclass=ABCMeta):
         self.prefix = prefix
         self.args = config.parse_config(testmode=testmode)
 
+        # if kwargs exist, try to replace in config:
+        for key, value in kwargs.items():
+            if key in self.args:
+                setattr(self.args, key, value)
+            else:
+                raise Exception(f"Key {key} does not exist in config. Cannot replace")
+        
         # if reload-model exists, reload config
         if self.args.reload_model_folder is not None:
             self.new = False
@@ -60,13 +67,6 @@ class Experiment(metaclass=ABCMeta):
                 
             self.base_log_path = str(Path(self.args.logdir) / str(Path(self.config_path).parent) / self.model_name)
 
-        # if kwargs exist, try to replace in config:
-        for key, value in kwargs.items():
-            if key in self.args:
-                setattr(self.args, key, value)
-            else:
-                raise Exception(f"Key {key} does not exist in config. Cannot replace")
-        
         if 'logdir' in self.args and not testmode:
             
             self.set_log_path(log_path=Path(self.base_log_path))

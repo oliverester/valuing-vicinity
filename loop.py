@@ -224,7 +224,7 @@ def gpu_resource_thread(gpu_queue,
                 logger.info(f"Providing new gpu {add_gpu} for job queue.")
      
         while used_gpu_queue.qsize() > 0:
-            used_gpu = used_gpu_queue.pop()
+            used_gpu = used_gpu_queue.get()
             # finish thread
             if used_gpu is None: 
                 break
@@ -253,9 +253,9 @@ if __name__ == '__main__':
                   config_folder="configs_paper/configs_cy16",
                   kwargs=dict(
                     sample_size= 5,
-                    epochs=2,
+                    epochs=1,
                     warm_up_epochs=0,
                     nfold=5,
-                    folds=[0,1],
+                    folds=[0],
                     logdir="logdir_paper/test_runs")
                  )
