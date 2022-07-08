@@ -37,7 +37,7 @@ attention-hidden-dim: 1024
 use-self-attention: false
 log-details: false
 seed: 13
-performance-metric: dice
+performance-metric: loss
 attention-on: true
 fill-in-eval: true
 

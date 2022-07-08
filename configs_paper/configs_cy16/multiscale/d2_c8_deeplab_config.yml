@@ -4,7 +4,7 @@ gpu: 2
 workers: 8
 nfold: 5
 batch-size: 32
-val-batch-size: 256
+val-batch-size: 64
 epochs: 100
 train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d2_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map_camelyon.json
@@ -27,5 +27,5 @@ use-ce-weights: false
 overlay-polygons: true
 log-details: false
 seed: 13
-performance-metric: dice
+performance-metric: loss
 multiscale-on: true

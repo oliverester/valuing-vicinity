@@ -25,5 +25,5 @@ use-ce-weights: false
 overlay-polygons: true
 log-details: false
 seed: 13
-performance-metric: dice
+performance-metric: loss
 multiscale-on: true
