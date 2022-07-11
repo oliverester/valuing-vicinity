@@ -1,5 +1,6 @@
 from datetime import datetime
 from functools import partial
+from imp import init_builtin
 import logging
 import logging.config
 import logging.handlers
@@ -140,18 +141,19 @@ def run_job(config_queue,
 
     # run until all configs are processed
     while True:
+        # first, get gpu resource from queue
+        gpu = gpu_queue.get()
+        
+        # second, pull a config from the queue, if one is still availble
         try:
             config_file = config_queue.get(False)
         except queue.Empty:
             # config queue is emtpy
             break
         
-        # get gpu resource from queue
-        gpu = gpu_queue.get()
-        
-        loop_logger.info(f"Running {config_file} on GPU {gpu}")
-        loop_logger.info(f"{config_queue.qsize()} tasks left")
-        
+        loop_logger.info(f"Starting {config_file} on GPU {gpu}")
+        loop_logger.info(f"{config_queue.qsize()} tasks on task queue left.")
+
         #kwargs to argv
         argv = ""
         for key, val in kwargs.items():
@@ -174,7 +176,8 @@ def run_job(config_queue,
         else:
             success_logger.info(f"Successful: {config_file}")
         
-        # free gpu resource again    
+        
+        # free gpu resource again 
         used_gpu_queue.put(gpu)
         
 def initialize_config_queue(config_folder, config_queue, logger):    
@@ -184,6 +187,7 @@ def initialize_config_queue(config_folder, config_queue, logger):
     
     logger.info(f"Starting job queue for configs in folder {config_folder}")
     logger.info(f"Task list: {base_configs_files}")
+    logger.info(f"#Task: {len(base_configs_files)}")
       
     # initialize config queue
     for config in base_configs_files:
@@ -221,15 +225,18 @@ def gpu_resource_thread(gpu_queue,
                         gpu_file,
                         logger):
     # manage a queue that holds usable gpus:
-    base_gpus = get_gpus_from_file(gpu_file, logger)
+    base_gpus = get_gpus_from_file(gpu_file, logger, initial=True)
     logger.info(f"Using gpus {base_gpus} for job queue.")
     for gpu in base_gpus:
         gpu_queue.put(gpu)
         
     while True:
-        time.sleep(5)
-        curr_gpus = get_gpus_from_file(gpu_file, logger)
-        
+        curr_gpus = None
+        # try to get current gpus - on error, return is None - wait until fix
+        while curr_gpus is None:
+            time.sleep(5)
+            curr_gpus = get_gpus_from_file(gpu_file, logger)
+
         # check for new gpus
         add_gpus = [gpu for gpu in curr_gpus if gpu not in base_gpus]
         if len(add_gpus) > 0:
@@ -259,8 +266,8 @@ def get_gpus_from_file(path, logger, initial=False):
             if initial:
                 raise exc
             else:
-                logger.error(exc)
-                logger.error("Cannot load gpus from file")
+                logger.error("Cannot parse gpus from file. Please fix the file.")
+                return None
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
