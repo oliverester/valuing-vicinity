@@ -1,6 +1,3 @@
-from datetime import datetime
-from functools import partial
-from imp import init_builtin
 import logging
 import logging.config
 import logging.handlers
@@ -8,16 +5,10 @@ import queue
 import subprocess
 import threading
 import time
-#import multiprocessing as mp
-from multiprocessing.pool import ThreadPool
+from datetime import datetime
+from pathlib import Path
 
 import yaml
-
-from pathlib import Path
-import traceback
-
-from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
-from src.exp_management.run_experiment import run_experiment
 
 
 def run_job_queue(config_folder: str,
@@ -271,11 +262,5 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_rcc/semantic/unet_resnet50",
-                  sample_size= 5,
-                  epochs=1,
-                  warm_up_epochs=0,
-                  nfold=5,
-                  folds=[0],
-                  logdir="logdir_paper/test_runs"
+                  config_folder="configs_paper/configs_cy16/semantic",
                  )
