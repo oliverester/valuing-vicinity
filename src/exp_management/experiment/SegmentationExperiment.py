@@ -41,12 +41,13 @@ from src.settings import get_class_weights
 class SegmentationExperiment(MLExperiment):
     
 
-    def __init__(self, config_path, testmode=False, **kwargs):
-        super().__init__(config_path=config_path,
-                         config_parser=AttentionSegmentationConfig,
-                         prefix='attention_segmentation',
-                         testmode=testmode,
-                         **kwargs)
+    def __init__(self,
+                 config_path,
+                 testmode=False):
+        super().__init__(config_path = config_path,
+                         config_parser = AttentionSegmentationConfig,
+                         prefix = 'attention_segmentation',
+                         testmode = testmode)
 
         self.data_provider = self.get_data_provider()
     

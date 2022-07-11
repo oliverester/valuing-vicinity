@@ -6,6 +6,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "args": ["--conf_file", "configs_paper/configs_rcc/semantic/deeplab_resnet50/d16_deeplab_config.yml",
+                     "--logdir", "logdir_paper/test"],
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {

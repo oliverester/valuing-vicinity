@@ -2,6 +2,7 @@
 Supervised Config parser
 """
 
+from typing import List
 import configargparse
 
 from src.exp_management.config import Config
@@ -10,6 +11,8 @@ class AttentionSegmentationConfig(Config):
     """
     Defines the parameters for a supervised config
     """
+    def __init__(self, config_paths: List[str]) -> None:
+        super().__init__(config_paths = config_paths)
 
     def parse_config(self,
                      verbose: bool = False,
@@ -191,6 +194,8 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--helper-loss', action='store_true', default=False,
                             help='Set to enable class distribution helper loss.')
         
+        parser.add_argument('--conf_file', default=None, type=str,
+                            help='Dummy var for conf file')
 
         args, unknown = parser.parse_known_args()
 

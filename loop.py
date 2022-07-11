@@ -1,22 +1,19 @@
 from datetime import datetime
+from functools import partial
 import logging
 import logging.config
 import logging.handlers
+import queue
+import subprocess
 import threading
 import time
 #import multiprocessing as mp
-import torch.multiprocessing as mp
+from multiprocessing.pool import ThreadPool
+
 import yaml
-try:
-     mp.set_start_method('spawn')
-except RuntimeError:
-    pass
 
 from pathlib import Path
 import traceback
-from typing import List
-
-import torch
 
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
 from src.exp_management.run_experiment import run_experiment
@@ -24,8 +21,8 @@ from src.exp_management.run_experiment import run_experiment
 
 def run_job_queue(config_folder: str,
                   gpu_file: str,
-                  kwargs):
-    q = mp.Queue()
+                  **kwargs):
+    q = queue.Queue()
     
     d = {
         'version': 1,
@@ -87,92 +84,99 @@ def run_job_queue(config_folder: str,
     logger = logging.getLogger('loop_logger')
     logger.setLevel(logging.DEBUG)
 
-    config_queue = mp.Manager().Queue()
-    gpu_queue  = mp.Manager().Queue()
-    used_gpu_queue  = mp.Manager().Queue()
+    success_logger = logging.getLogger('success_logger')
+    success_logger.setLevel(logging.DEBUG)
+    error_logger = logging.getLogger('error_logger')
+    error_logger.setLevel(logging.DEBUG)
+    loop_logger = logging.getLogger('loop_logger')
+    loop_logger.setLevel(logging.DEBUG)
+    
+    config_queue = queue.Queue()
+    gpu_queue  = queue.Queue()
+    used_gpu_queue  = queue.Queue()
 
+    # intialize config queue
+    base_configs_files =initialize_config_queue(config_folder, config_queue, logger)
+    
     gt = threading.Thread(target=gpu_resource_thread, args=(gpu_queue, used_gpu_queue, gpu_file, logger))
     gt.start()
-    ct = threading.Thread(target=config_sync_thread, args=(config_queue, config_folder, logger))
+    ct = threading.Thread(target=config_sync_thread, args=(base_configs_files, config_queue, config_folder, logger))
     ct.start()
-    lp = threading.Thread(target=logger_thread, args=(q,))
-    lp.start()
     
-    torch.multiprocessing.spawn(run_job,
-                                args=(config_queue, gpu_queue, used_gpu_queue, q, kwargs), 
-                                nprocs=6, # max parallel jobs
-                                join=True, 
-                                daemon=False,
-                                start_method='spawn')
-    print("Done")
+    task_threads = []
+    # start subprocesses for each config file
+    for _ in range(1): # at most 6 subprocesses
+        t = threading.Thread(target=run_job, 
+                             args=(config_queue, 
+                                   gpu_queue, 
+                                   used_gpu_queue, 
+                                   kwargs)
+                            ) 
+        t.start()
+        task_threads.append(t)                        
+    
+    # wait until all task threads are done
+    for t in task_threads:
+        t.join()
+        
+    print("Tasks done.")
     
     # finish log thread
     q.put(None)
     used_gpu_queue.put(None)
-    lp.join()
     gt.join()
+    print("GPU resource handling done.")
     ct.join()
-    
-
-def run_job(proc_idx: int,
-            config_queue,
+    print("Config handling done.")
+  
+def run_job(config_queue,
             gpu_queue,
             used_gpu_queue,
-            logger_config,
             kwargs):
-        
-    qh = logging.handlers.QueueHandler(logger_config)
- 
+         
     success_logger = logging.getLogger('success_logger')
-    success_logger.addHandler(qh)
-    success_logger.setLevel(logging.DEBUG)
     error_logger = logging.getLogger('error_logger')
-    error_logger.addHandler(qh)
-    error_logger.setLevel(logging.DEBUG)
     loop_logger = logging.getLogger('loop_logger')
-    loop_logger.addHandler(qh)
-    loop_logger.setLevel(logging.DEBUG)
 
     # run until all configs are processed
-    while config_queue.qsize() > 0:
+    while True:
+        try:
+            config_file = config_queue.get(False)
+        except queue.Empty:
+            # config queue is emtpy
+            print("empty queue")
+            break
         
-        config_file = config_queue.get()
         # get gpu resource from queue
         gpu = gpu_queue.get()
         
-        loop_logger.info(f"Running {config_file}")
+        loop_logger.info(f"Running {config_file} on GPU {gpu}")
         loop_logger.info(f"{config_queue.qsize()} tasks left")
         
-        try:
-            run_experiment(exp=SegmentationExperiment(config_path=config_file,
-                                                      gpu=gpu,
-                                                      **kwargs
-                                                      )
-                           )
-            success_logger.info(f"Successful: {config_file}")
+        #kwargs to argv
+        argv = []
+        for key, val in kwargs.items():
+            argv.append(f"--{key}")
+            argv.append(str(val))
             
-        except Exception as e:
-            error_logger.error(traceback.format_exc())
-            error_logger.error(e)
+        # here call subproccess
+        p = subprocess.Popen(['bash -c "source activate vv; python main.py"',
+                              '--conf_file', config_file, '--gpu', str(gpu)] + argv, 
+                                stderr=subprocess.PIPE, 
+                                shell=True)
+        p.wait()
+        _, err = p.communicate()
+        
+        if p.returncode != 0: 
+            error_logger.error(err)
             error_logger.error(f"Error: {config_file}")
-            
+        else:
+            success_logger.info(f"Successful: {config_file}")
+        
         # free gpu resource again    
         used_gpu_queue.put(gpu)
-
         
-def logger_thread(q):
-    while True:
-        record = q.get()
-        if record is None:
-            break
-        logger = logging.getLogger(record.name)
-        logger.handle(record)
-        
-def config_sync_thread(config_queue,
-                       config_folder,
-                       logger):
-    # check for new configs and put into config_queue
-    
+def initialize_config_queue(config_folder, config_queue, logger):    
     # initial load
     base = Path(config_folder)
     base_configs_files = [str(p) for p in list(base.rglob("*")) if p.is_file()]
@@ -183,7 +187,16 @@ def config_sync_thread(config_queue,
     # initialize config queue
     for config in base_configs_files:
         config_queue.put(config)
-        
+    
+    return base_configs_files
+      
+      
+def config_sync_thread(base_configs_files,
+                       config_queue,
+                       config_folder,
+                       logger):
+    # check for new configs and put into config_queue
+
     # run until all configs are done
     while config_queue.qsize() > 0:
         time.sleep(5)
@@ -203,7 +216,7 @@ def config_sync_thread(config_queue,
             base_configs_files = curr_configs_files
     
 def gpu_resource_thread(gpu_queue,
-                        used_gpu_queue, 
+                        used_gpu_queue,
                         gpu_file,
                         logger):
     # manage a queue that holds usable gpus:
@@ -227,7 +240,7 @@ def gpu_resource_thread(gpu_queue,
             used_gpu = used_gpu_queue.get()
             # finish thread
             if used_gpu is None: 
-                break
+                return None
             if used_gpu in curr_gpus:
                 gpu_queue.put(used_gpu)
             else:
@@ -250,12 +263,11 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_rcc/semantic",
-                #   kwargs=dict(
-                #     sample_size= 5,
-                #     epochs=1,
-                #     warm_up_epochs=0,
-                #     nfold=5,
-                #     folds=[0],
-                #     logdir="logdir_paper/test_runs")
+                  config_folder="configs_paper/configs_rcc/semantic/unet_resnet50",
+                  sample_size= 5,
+                  epochs=1,
+                  warm_up_epochs=0,
+                  nfold=5,
+                  folds=[0],
+                  logdir="logdir_paper/test_runs"
                  )

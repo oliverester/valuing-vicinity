@@ -1,9 +1,29 @@
+import argparse
+import sys
+import time
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
 from src.exp_management.run_experiment import run_experiment
 
 if __name__ == '__main__':
-    run_experiment(exp=SegmentationExperiment(config_path='configs_paper/configs_rcc/semantic/deeplab_resnet50/d16_deeplab_config.yml',
-                                              folds=[0],
-                                              gpu=2),
-                  )                           
- 
+
+    conf_parser = argparse.ArgumentParser(
+        description=__doc__, # printed with -h/--help
+        # Don't mess with format of description
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        # Turn off help, so we print all options in response to -h
+        add_help=False
+        )
+    
+    conf_parser.add_argument("-c", "--conf_file",
+                        help="Specify config file", metavar="FILE")
+    args, _ = conf_parser.parse_known_args()
+    
+    for _ in range(2):
+        time.sleep(0.5)
+        print("dies ist ein Test")
+    try:
+        raise Exception("Test-Fehler")
+        run_experiment(exp=SegmentationExperiment(config_path=args.conf_file)
+                    ) 
+    except Exception as e:
+        sys.exit(e)                       
