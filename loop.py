@@ -105,7 +105,7 @@ def run_job_queue(config_folder: str,
     
     task_threads = []
     # start subprocesses for each config file
-    for _ in range(1): # at most 6 subprocesses
+    for _ in range(6): # at most 6 subprocesses
         t = threading.Thread(target=run_job, 
                              args=(config_queue, 
                                    gpu_queue, 
@@ -144,7 +144,6 @@ def run_job(config_queue,
             config_file = config_queue.get(False)
         except queue.Empty:
             # config queue is emtpy
-            print("empty queue")
             break
         
         # get gpu resource from queue
@@ -154,14 +153,16 @@ def run_job(config_queue,
         loop_logger.info(f"{config_queue.qsize()} tasks left")
         
         #kwargs to argv
-        argv = []
+        argv = ""
         for key, val in kwargs.items():
-            argv.append(f"--{key}")
-            argv.append(str(val))
+            argv += f" --{key.replace('_','-')} "
+            if isinstance(val, list):
+                val = ",".join([str(v) for v in val])
+            argv += str(val)
             
         # here call subproccess
-        p = subprocess.Popen(['bash -c "source activate vv; python main.py"',
-                              '--conf_file', config_file, '--gpu', str(gpu)] + argv, 
+        p = subprocess.Popen([f'bash -c "source activate vv; python main.py \
+                                --conf_file {config_file} --gpu {str(gpu)}' + argv +'"'], 
                                 stderr=subprocess.PIPE, 
                                 shell=True)
         p.wait()

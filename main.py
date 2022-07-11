@@ -1,6 +1,6 @@
 import argparse
 import sys
-import time
+
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
 from src.exp_management.run_experiment import run_experiment
 
@@ -18,12 +18,7 @@ if __name__ == '__main__':
                         help="Specify config file", metavar="FILE")
     args, _ = conf_parser.parse_known_args()
     
-    for _ in range(2):
-        time.sleep(0.5)
-        print("dies ist ein Test")
     try:
-        raise Exception("Test-Fehler")
-        run_experiment(exp=SegmentationExperiment(config_path=args.conf_file)
-                    ) 
+        run_experiment(exp=SegmentationExperiment(config_path=args.conf_file))
     except Exception as e:
         sys.exit(e)                       

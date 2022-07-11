@@ -56,13 +56,9 @@ class Experiment(metaclass=ABCMeta):
             self.base_log_path = Path(self.args.reload_model_folder)
         else:
             self.new = True
-            self.model_name = Path(self.config_path).stem + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())
-                       
-            # if multiprocessing, tag with process idx to avoid overwriting
-            p = current_process()
-            if p.name != 'MainProcess':
-                rank = p._identity[0]
-                self.model_name += f"_{str(rank)}"
+            self.model_name = Path(self.config_path).stem + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())       
+            # if parallel at the same time, tag with gpu to avoid overwriting
+            self.model_name += f"_{str(self.args.gpu)}"
                 
             self.base_log_path = str(Path(self.args.logdir) / str(Path(self.config_path).parent) / self.model_name)
 
