@@ -132,15 +132,15 @@ def run_job(config_queue,
 
     # run until all configs are processed
     while True:
-        # first, get gpu resource from queue
-        gpu = gpu_queue.get()
-        
-        # second, pull a config from the queue, if one is still availble
+        # first, pull a config from the queue, if one is still availble
         try:
             config_file = config_queue.get(False)
         except queue.Empty:
-            # config queue is emtpy
+            # config queue is emtpy, stop this thread
             break
+        
+        # then, get/wait for free gpu resource from queue
+        gpu = gpu_queue.get()
         
         loop_logger.info(f"Starting {config_file} on GPU {gpu}")
         loop_logger.info(f"{config_queue.qsize()} tasks on task queue left.")
@@ -154,19 +154,16 @@ def run_job(config_queue,
             argv += str(val)
             
         # here call subproccess
-        p = subprocess.Popen([f'bash -c "source activate vv; python main.py \
+        p = subprocess.run([f'bash -c "source activate vv; python main.py \
                                 --conf_file {config_file} --gpu {str(gpu)}' + argv +'"'], 
                                 stderr=subprocess.PIPE, 
                                 shell=True)
-        p.wait()
-        _, err = p.communicate()
         
         if p.returncode != 0: 
-            error_logger.error(err)
+            error_logger.error(p.stderr)
             error_logger.error(f"Error: {config_file}")
         else:
             success_logger.info(f"Successful: {config_file}")
-        
         
         # free gpu resource again 
         used_gpu_queue.put(gpu)
@@ -262,5 +259,6 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_cy16/semantic",
+                  #config_folder="configs_paper/configs_rcc/semantic",
+                  config_folder="configs_test"
                  )
