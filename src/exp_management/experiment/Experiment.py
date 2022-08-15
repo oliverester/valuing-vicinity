@@ -183,6 +183,8 @@ class Experiment(metaclass=ABCMeta):
                 writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_mean_{score}',
                                   scalar_value=scores[phase][score]['mean'])
         
+        writer.close()
+        
     def get_log(self) -> Dict:
         if self.logfile_path.exists():
             with self.logfile_path.open('r') as yamlfile:

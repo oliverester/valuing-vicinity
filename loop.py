@@ -134,16 +134,17 @@ def run_job(config_queue,
     while True:
         # first, pull a config from the queue, if one is still availble
         try:
-            config_file = config_queue.get(False)
+            config_file = config_queue.get(False) 
+            loop_logger.info(f"Taking {config_file} config from queue")
+            loop_logger.info(f"{config_queue.qsize()} tasks on task queue left.")
         except queue.Empty:
             # config queue is emtpy, stop this thread
             break
         
         # then, get/wait for free gpu resource from queue
         gpu = gpu_queue.get()
-        
+        loop_logger.info(f"Taking GPU {gpu} resource")
         loop_logger.info(f"Starting {config_file} on GPU {gpu}")
-        loop_logger.info(f"{config_queue.qsize()} tasks on task queue left.")
 
         #kwargs to argv
         argv = ""
@@ -166,6 +167,7 @@ def run_job(config_queue,
             success_logger.info(f"Successful: {config_file}")
         
         # free gpu resource again 
+        loop_logger.info(f"Freeing GPU {gpu} resource")
         used_gpu_queue.put(gpu)
         
 def initialize_config_queue(config_folder, config_queue, logger):    
@@ -259,6 +261,6 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  #config_folder="configs_paper/configs_rcc/semantic",
-                  config_folder="configs_test"
+                  config_folder="configs_paper/configs_rcc/attention/deeplab_res50/variants",
+                  #config_folder="configs_test"
                  )

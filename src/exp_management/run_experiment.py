@@ -101,7 +101,7 @@ def run_kfold_model(cv_set: CvSet,
             fold_logs.append(exp.get_log())
             logging.getLogger('exp').info(f"Finished fold {holdout_set.fold}")
                    
-    # TBD: here aggregate kfold results
+    # here aggregate kfold results
     main_exp.merge_fold_logs(fold_logs)
 
 def run_holdout_model_in_parallel(proc_idx: int,
