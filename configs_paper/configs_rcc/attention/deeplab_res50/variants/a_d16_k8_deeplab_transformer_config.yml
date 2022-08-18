@@ -30,7 +30,7 @@ k-neighbours: 8
 use-ln: true
 emb-dropout: 0
 att-dropout: 0
-use-pos-encoding: true
+sin-pos-encoding: true
 num-attention-heads: 8
 attention-hidden-dim: 1024
 use-self-attention: false
