@@ -163,8 +163,10 @@ def run_job(config_queue,
         if p.returncode != 0: 
             error_logger.error(p.stderr)
             error_logger.error(f"Error: {config_file}")
+            loop_logger.error(f"Error: {config_file}")
         else:
             success_logger.info(f"Successful: {config_file}")
+            loop_logger.info(f"Successful: {config_file}")
         
         # free gpu resource again 
         loop_logger.info(f"Freeing GPU {gpu} resource")
