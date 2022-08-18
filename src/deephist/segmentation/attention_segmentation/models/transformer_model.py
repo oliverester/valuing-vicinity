@@ -97,12 +97,12 @@ class ViT(nn.Module):
                  hidden_dim: int,
                  att_dropout: float = 0.,
                  emb_dropout: float = 0.,
-                 use_pos_encoding: bool = True):
+                 sin_pos_encoding: bool = True):
         super().__init__()
         self.kernel_size = kernel_size
-
-        self.use_pos_encoding = use_pos_encoding
-        if self.use_pos_encoding:
+        self.sin_pos_encoding = sin_pos_encoding
+        
+        if self.sin_pos_encoding:
             self.pos_embedding = PositionalEncoding(d_hid=dim,
                                                     n_position=kernel_size*kernel_size)
         self.dropout = nn.Dropout(emb_dropout)
@@ -115,7 +115,7 @@ class ViT(nn.Module):
 
     def forward(self, x, mask=None, return_attention=False):
         
-        if self.use_pos_encoding:
+        if self.sin_pos_encoding:
             x += self.pos_embedding(x, mask)  
         x = self.dropout(x)
         x, attention = self.transformer(x, mask=mask)

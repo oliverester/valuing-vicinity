@@ -29,8 +29,8 @@ class AttentionSegmentationModel(torch.nn.Module):
                  emb_dropout: float = 0.,
                  att_dropout: float = 0.,
                  use_ln: bool = False,
-                 use_pos_encoding: bool = False,
                  use_central_attention: bool = False,
+                 sin_pos_encoding: bool = False,
                  learn_pos_encoding: bool = False,
                  context_conv: int = 1,
                  attention_on: bool = True,
@@ -55,10 +55,11 @@ class AttentionSegmentationModel(torch.nn.Module):
             emb_dropout (float, optional): Dropout for embeddings (MHA/Transformer). Defaults to 0..
             att_dropout (float, optional): Dropout for attention module (MHA/Transformer). Defaults to 0..
             use_ln (bool, optional): Use layer normalization (MHA only) for k, q, v. Defaults to False.
-            use_pos_encoding (bool, optional): Use sinusiodal position encoding (MHA/Transformer). Defaults to False.
             use_central_attention (bool, optional): Self-attention to central embedding turned on. 
                 If false, masking is applied to central patch. . Defaults to False.
+            sin_pos_encoding (bool, optional): Use sinusiodal position encoding (MHA/Transformer). Defaults to False.
             learn_pos_encoding (bool, optional): If true, position encoding is learned. Applies only to MHA . Defaults to False.
+            context_conv (int): Size of convolution kernel to fuse context embedding with bottleneck features maps.
             attention_on (bool, optional): Use MHA/Transformer. If false, base segmentation model is applied. Defaults to True.
             use_transformer (bool, optional): Switch to use Transformer instead of MHA. Defaults to False.
             use_helperloss (bool, optional): Activates a tissue distribution helper loss per patch. 
@@ -114,7 +115,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                                        hidden_dim=attention_hidden_dim,
                                        emb_dropout=emb_dropout,
                                        att_dropout=att_dropout,
-                                       use_pos_encoding=use_pos_encoding,
+                                       sin_pos_encoding=sin_pos_encoding,
                                        )
             else: # use MHA
                 self.msa = MultiheadAttention(input_dim=attention_input_dim, 
@@ -122,7 +123,7 @@ class AttentionSegmentationModel(torch.nn.Module):
                                               num_heads=num_attention_heads,
                                               kernel_size= self.kernel_size,
                                               use_ln=use_ln,
-                                              use_pos_encoding=use_pos_encoding,
+                                              sin_pos_encoding=sin_pos_encoding,
                                               learn_pos_encoding=learn_pos_encoding,
                                               emb_dropout=emb_dropout,
                                               att_dropout=att_dropout)

@@ -168,10 +168,10 @@ class AttentionSegmentationConfig(Config):
                             help='Select MHA/transformer dropout (mlp & att)')
         parser.add_argument('--use-ln', action='store_true',
                             help='Set to use layer normalization at MSA beginning.')
-        parser.add_argument('--use-pos-encoding', action='store_true',
-                            help='Set to use position encoding in MSA.')
+        parser.add_argument('--sin-pos-encoding', action='store_true',
+                            help='Set to use sinusoidal position encoding in MSA.')
         parser.add_argument('--learn-pos-encoding', action='store_true',
-                            help='Set to activate learnable position encoding.')
+                            help='Set to activate learnable 2d position encoding.')
         parser.add_argument('--use-self-attention', action='store_true',
                             help='Set to consider central patch with respect to neighbour patches in MSA.')
         parser.add_argument('--use-transformer', action='store_true',

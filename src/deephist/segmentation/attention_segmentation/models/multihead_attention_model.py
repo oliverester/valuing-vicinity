@@ -13,9 +13,9 @@ class MultiheadAttention(nn.Module):
                  hidden_dim: int, 
                  num_heads: int, 
                  kernel_size: int, 
-                 use_ln: bool =False, 
-                 use_pos_encoding: bool =False,
-                 learn_pos_encoding: bool =False,
+                 use_ln: bool = False, 
+                 sin_pos_encoding: bool = False,
+                 learn_pos_encoding: bool = False,
                  att_dropout: float = 0.,
                  emb_dropout: float = 0.):
         """_summary_
@@ -26,7 +26,7 @@ class MultiheadAttention(nn.Module):
             num_heads (int): Number of heads
             kernel_size (int): Neighbourhood length
             use_ln (bool, optional): Use layer normalization for k, q, v. Defaults to False.
-            use_pos_encoding (bool, optional): Use sinusiodal position encoding. Defaults to False.
+            sin_pos_encoding (bool, optional): Use sinusiodal position encoding. Defaults to False.
             learn_pos_encoding (bool, optional): Use learnable 2-d position embeddings. Defaults to False.
             att_dropout (float): Set attention dropout after softmax. Default to 0.
             emb_dropout (float): Set embedding dropout. Default to 0.
@@ -35,10 +35,10 @@ class MultiheadAttention(nn.Module):
         assert hidden_dim % num_heads == 0, "Embedding dimension must be 0 modulo number of heads."
 
         self.use_ln = use_ln
-        self.use_pos_encoding = use_pos_encoding
+        self.sin_pos_encoding = sin_pos_encoding
         self.learn_pos_encoding = learn_pos_encoding
         
-        assert(use_pos_encoding + learn_pos_encoding <= 1), "Either use (sin.) position encoding or learn (2d) embeddings." 
+        assert(sin_pos_encoding + learn_pos_encoding <= 1), "Either use (sin.) position encoding or learn (2d) embeddings." 
         
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
@@ -58,9 +58,9 @@ class MultiheadAttention(nn.Module):
         if self.learn_pos_encoding:
             self._2d_pos_emb = _2DPositionalEmbedding(d_hid=hidden_dim // num_heads,
                                                       n_position=kernel_size)
-        else: 
-            self.pos_enc = PositionalEncoding(d_hid=hidden_dim // num_heads,
-                                              n_position=kernel_size*kernel_size)
+        if self.sin_pos_encoding:
+            self.sin_pos_enc = PositionalEncoding(d_hid=hidden_dim // num_heads,
+                                                  n_position=kernel_size*kernel_size)
         
         self.att_dropout = nn.Dropout(p=att_dropout)
         self.emb_dropout = nn.Dropout(p=emb_dropout)
@@ -99,14 +99,13 @@ class MultiheadAttention(nn.Module):
         q = q.reshape(batch_size, 1, self.num_heads, self.head_dim)
         q = q.permute(0, 2, 1, 3) # [Batch, Head, SeqLen, Dims]
         
-        if self.use_pos_encoding:
-            if self.learn_pos_encoding:
-               # 2D position learnable embedding
-               k = self._2d_pos_emb(k)
-            else:
-               # 1D siusoid positional encoding
-               k = self.pos_enc(k)
-            
+        if self.learn_pos_encoding:
+            # 2D position learnable embedding
+            k = self._2d_pos_emb(k)
+        if self.sin_pos_encoding:
+            # 1D siusoid positional encoding
+            k = self.sin_pos_enc(k)
+        
         # Determine value outputs
         values, attention = self.scaled_dot_product(q, k, v, mask=mask)
         values = values.permute(0, 2, 1, 3) # [Batch, SeqLen, Head, Dims]

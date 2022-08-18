@@ -59,12 +59,12 @@ class Experiment(metaclass=ABCMeta):
             self.model_name = Path(self.config_path).stem + "-{date:%Y-%m-%d_%H_%M_%S}".format(date=datetime.datetime.now())       
             # if parallel at the same time, tag with gpu to avoid overwriting
             self.model_name += f"_{str(self.args.gpu)}"
-                
             self.base_log_path = str(Path(self.args.logdir) / str(Path(self.config_path).parent) / self.model_name)
 
         if 'logdir' in self.args and not testmode:
             
             self.set_log_path(log_path=Path(self.base_log_path))
+            self._init_logging(log_level)
             
         if self.args.seed is not None:  
             set_seed(self.args.seed)
@@ -75,7 +75,6 @@ class Experiment(metaclass=ABCMeta):
                         'You may see unexpected behavior when restarting '
                         'from checkpoints.')
             
-        self._init_logging(log_level)
         
     def _init_logging(self, log_level):
             

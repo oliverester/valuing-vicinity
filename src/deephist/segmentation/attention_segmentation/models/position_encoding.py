@@ -5,6 +5,8 @@ import torch.nn as nn
 
 class PositionalEncoding(nn.Module):
     """
+    Sinusiodal (fixed) positional encoding
+    
     From https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/master/transformer/Models.py
     """
 
@@ -31,6 +33,18 @@ class PositionalEncoding(nn.Module):
 
 
 class _2DPositionalEmbedding(nn.Module):
+    """
+    relative 2D (learnable) positional encoding
+    
+    From "Stand-Alone Self-Attention in Vision Models Prajit":   
+    @article{ramachandran2019stand,
+            title={Stand-alone self-attention in vision models},
+            author={Ramachandran, Prajit and Parmar, Niki and Vaswani, Ashish and Bello, Irwan and Levskaya, Anselm and Shlens, Jon},
+            journal={Advances in Neural Information Processing Systems},
+            volume={32},
+            year={2019}
+            }
+    """
     
     def __init__(self, d_hid, n_position):
         super(_2DPositionalEmbedding, self).__init__()
