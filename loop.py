@@ -206,7 +206,7 @@ def config_sync_thread(base_configs_files,
             logger.info(f"Detecting {len(new_config_files)} new configs")
             logger.info(f"New: {new_config_files}")
             
-            for config in base_configs_files:
+            for config in new_config_files:
                 config_queue.put(config)
                 
             # update base_config_files
