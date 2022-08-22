@@ -43,11 +43,13 @@ class SegmentationExperiment(MLExperiment):
 
     def __init__(self,
                  config_path,
-                 testmode=False):
+                 testmode=False,
+                 **kwargs):
         super().__init__(config_path = config_path,
                          config_parser = AttentionSegmentationConfig,
                          prefix = 'attention_segmentation',
-                         testmode = testmode)
+                         testmode = testmode,
+                         **kwargs)
 
         self.data_provider = self.get_data_provider()
     

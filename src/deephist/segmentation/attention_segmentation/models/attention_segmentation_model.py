@@ -97,14 +97,15 @@ class AttentionSegmentationModel(torch.nn.Module):
         
         if self.attention_on:
             # f_emb
-            self.pooling = nn.AdaptiveAvgPool2d(1)
+            self.pooling = nn.AdaptiveAvgPool2d(output_size=1)
             # number of feature maps of encoder output: e.g. 2048 for U-net 5 layers 
-            self.lin_proj = nn.Linear(self.base_model.encoder._out_channels[-1], attention_input_dim)
-            
+            self.lin_proj = nn.Linear(in_features=self.base_model.encoder._out_channels[-1], 
+                                      out_features=attention_input_dim)
             # f_fuse
-            self.context_conv = Conv2dReLU(self.base_model.encoder._out_channels[-1]+attention_input_dim, 
-                                           self.base_model.encoder._out_channels[-1], 
-                                           (context_conv, context_conv),
+            self.context_conv = Conv2dReLU(in_channels=self.base_model.encoder._out_channels[-1]+attention_input_dim, 
+                                           out_channels=self.base_model.encoder._out_channels[-1], 
+                                           kernel_size=(context_conv, context_conv),
+                                           padding=(context_conv-1)/2,
                                            use_batchnorm=True)
             if self.use_transformer:
                 self.transformer = ViT(kernel_size=self.kernel_size,

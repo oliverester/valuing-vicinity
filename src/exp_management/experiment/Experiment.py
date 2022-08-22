@@ -31,6 +31,7 @@ class Experiment(metaclass=ABCMeta):
                  testmode: bool = False,
                  prefix: str = 'exp',
                  log_level: int = logging.INFO,
+                 **kwargs
                  ) -> None:
         
         self.testmode = testmode
@@ -40,12 +41,12 @@ class Experiment(metaclass=ABCMeta):
         self.prefix = prefix
         self.args = config.parse_config(testmode=testmode)
 
-        # if kwargs exist, try to replace in config:
-        # for key, value in kwargs.items():
-        #     if key in self.args:
-        #         setattr(self.args, key, value)
-        #     else:
-        #         raise Exception(f"Key {key} does not exist in config. Cannot replace")
+        #if kwargs exist, try to replace in config:
+        for key, value in kwargs.items():
+            if key in self.args:
+                setattr(self.args, key, value)
+            else:
+                raise Exception(f"Key {key} does not exist in config. Cannot replace")
         
         # if reload-model exists, reload config
         if self.args.reload_model_folder is not None:

@@ -24,7 +24,6 @@ from src.exp_management.experiment.SegmentationExperiment import SegmentationExp
 def make_cls_dist_plot():
     exp=SegmentationExperiment(testmode=True,
                                config_path='scripts/exploration/attention_segmentation_config.yml')
-
     wsis = exp.data_provider.wsi_dataset.wsis
 
     area_dict = defaultdict(list)
