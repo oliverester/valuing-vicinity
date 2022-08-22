@@ -22,16 +22,16 @@ def run_patch_inference(exp: Experiment,
     """
 
     model = exp.get_model()
-    if exp.args.folds is not None:
-        for fold in exp.args.folds:
+    if exp.args.nfold is not None:
+        for fold in range(exp.args.nfold):
             logging.getLogger('exp').info(f"Inference for fold {fold}")
             
-            reload_from = Path(exp.args.logdir) / exp.args.reload_model_folder / f"fold_{fold}"
-            exp.log_path = str(Path(exp.args.logdir) / f"fold_{fold}")
+            reload_from = Path(exp.args.reload_model_folder) / f"fold_{fold}"
+            exp.log_path = reload_from #str(Path(exp.args.logdir) / f"fold_{fold}")
             
             reload_model(model=model,
-                        model_path=reload_from,
-                        gpu=exp.args.gpu)
+                         model_path=reload_from,
+                         gpu=exp.args.gpu)
             
             if exp.args.attention_on:
                 eval = att.evaluate_details
@@ -39,11 +39,9 @@ def run_patch_inference(exp: Experiment,
                 eval = ms.evaluate_details
             else:
                 eval = bs.evaluate_details
-            
-            #todo handle cv models
-            
+                        
             eval(patch_coordinates=patch_coordinates,
-                include_k = k,
-                exp=exp, 
-                model=model, 
-                wsis=exp.data_provider.test_wsi_dataset.wsis)
+                 include_k = k,
+                 exp=exp, 
+                 model=model, 
+                 wsis=exp.data_provider.test_wsi_dataset.wsis)
