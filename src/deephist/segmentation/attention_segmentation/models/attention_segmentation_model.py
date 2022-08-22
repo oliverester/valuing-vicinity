@@ -105,7 +105,7 @@ class AttentionSegmentationModel(torch.nn.Module):
             self.context_conv = Conv2dReLU(in_channels=self.base_model.encoder._out_channels[-1]+attention_input_dim, 
                                            out_channels=self.base_model.encoder._out_channels[-1], 
                                            kernel_size=(context_conv, context_conv),
-                                           padding=(context_conv-1)/2,
+                                           padding=(context_conv-1)//2,
                                            use_batchnorm=True)
             if self.use_transformer:
                 self.transformer = ViT(kernel_size=self.kernel_size,
