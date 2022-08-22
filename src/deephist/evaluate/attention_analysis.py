@@ -29,7 +29,7 @@ def run_attention_analysis(exp: Experiment):
             
             attention_analysis(exp=exp, 
                                model=model, 
-                               wsis=exp.data_provider.test_wsi_dataset.wsis)
+                               wsis=exp.data_provider.cv_set.holdout_sets[fold].test_wsi_dataset.wsis)
             
 def attention_analysis(exp,
                        model,
@@ -48,7 +48,9 @@ def attention_analysis(exp,
     # sum up distances
 
     viz = Visualizer(save_to_folder=True)
-
+    
+    att_distances = None
+    
     model.eval()
     for wsi in wsis:
         with wsi.inference_mode(): # initializes memory
@@ -68,16 +70,31 @@ def attention_analysis(exp,
             # attention dim: patches, heads, 1, token
             n_patches, heads, _, _ = attentions.shape
             
-            attentions = torch.mean(attentions.view((n_patches, heads, (k*2+1),(k*2+1))), dim=1).cpu().numpy()
+            attentions = torch.mean(attentions.view((n_patches, heads, (k*2+1),(k*2+1))), dim=1)
             
             # dot-product to apply distance masks
-            a = torch.Tensor(attentions).unsqueeze(-1).expand((n_patches,l,l,k)) * dist_matrix.unsqueeze(0).expand((n_patches,l,l,k))   
+            dist_cube =  dist_matrix.unsqueeze(0).expand((n_patches,l,l,k)) 
+            attention_cube = attentions.unsqueeze(-1).expand((n_patches,l,l,k))
+            a = attention_cube * dist_cube
             # all weights must still sum up to 1
             assert torch.round(torch.sum(a)) == 1 * n_patches, 'all attention weigths of one WSI must still sum up to 1'
-            # a shape: n_patches, l, l, k -> now sum over l x l (only attention score for one distance value)
-            att_distances = torch.sum(a,(1,2))
-            att_distance_mean = torch.mean(att_distances, dim=0)
-            att_distance_std = torch.std(att_distances, dim=0)
+            # a shape: n_patches, l, l, k 
+            # -> now weighted sum over l x l (only attention score for one distance value)
+            # attention ratio per patch with distance
+            
+            new_att_distances = torch.sum(a,(1,2)) / torch.sum(dist_cube,(1,2))
+            
+            if att_distances is None:
+                att_distances = new_att_distances
+            else:
+                att_distances = torch.cat((new_att_distances, att_distances))
+                
+    att_distance_mean = torch.mean(att_distances, dim=0)
+    #att_distance_mean / torch.sum(att_distance_mean)
+    att_distance_std = torch.std(att_distances, dim=0)
+    
+    print(f"Patch Attention per distance of {str(len(wsis))} WSIs:")
+    print(att_distance_mean)
             
             
             
