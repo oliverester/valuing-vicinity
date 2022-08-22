@@ -59,17 +59,19 @@ class _2DPositionalEmbedding(nn.Module):
         self._reset_parameters()
         
     def forward(self, k):
-        batch_size, seq_length, _ = k.size()
+        batch_size, num_heads, seq_length, d_hid = k.size()
 
+        assert self.d_hid == d_hid, 'dimensionality does not fit'
+        
         # apply head-invariant relative position encoding
         k_h, k_w = k.split(self.d_hid // 2, dim=-1)
         # break up kernel to apply spatial-wise pos encoding addition
-        k_h = k_h.view((batch_size, self.num_heads , self.n_position, self.n_position, self.d_hid // 2))
-        k_w = k_w.view((batch_size, self.num_heads , self.n_position, self.n_position, self.d_hid // 2))
+        k_h = k_h.view((batch_size, num_heads, self.n_position, self.n_position, self.d_hid // 2))
+        k_w = k_w.view((batch_size, num_heads, self.n_position, self.n_position, self.d_hid // 2))
         # add relative position encoding
         k = torch.cat((k_h + self.pos_h, k_w + self.pos_w), dim=-1)
         
-        k = k.view((batch_size, self.num_heads , seq_length, self.d_hid // self.num_heads))
+        k = k.view((batch_size, num_heads, seq_length, self.d_hid))
         
         return k
 
