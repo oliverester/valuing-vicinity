@@ -636,7 +636,7 @@ class Visualizer():
         
         if attention is True:
             mode = mode + "_a"
-            # attention masks
+            # attention masks mean over all heads
             attention = torch.mean(center_patch.attention.view((-1,(k*2+1),(k*2+1))), dim=0).cpu().numpy()
             # hack because the memory has x and y changed..
             attention = np.moveaxis(attention, 0, -1)
