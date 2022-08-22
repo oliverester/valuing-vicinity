@@ -1,4 +1,5 @@
  
+from src.deephist.evaluate.attention_analysis import run_attention_analysis
 from src.deephist.evaluate.patch_inference import run_patch_inference
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
 
@@ -13,6 +14,9 @@ if __name__ == "__main__":
                          }
     # patch_coordinates = {'tumor026': [(8,34)],
     #                     }
-    exp = SegmentationExperiment(config_path='configs_rcc/attention_segmentation_config_inference.yml')
     
-    run_patch_inference(exp, patch_coordinates, k=8)
+    exp = SegmentationExperiment(config_path='configs_inference/attention_segmentation_config_inference.yml')
+    
+    run_attention_analysis(exp)
+        
+    #run_patch_inference(exp, patch_coordinates, k=8)
