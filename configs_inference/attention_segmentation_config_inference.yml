@@ -1,5 +1,5 @@
-#test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d16_train
-reload-model-folder: logdir_reg/a_d16_k8_deeplab_val_eval_mode_val_shuffle_bigtrain_shuffle_inf_train_mode/attention_segmentation-2022-06-24_11_26_00
+#test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/w163_d16
+reload-model-folder: logdir_paper/configs_paper/configs_rcc/attention/deeplab_res50/variants/a_d16_k8_deeplab_helperloss08_config-2022-08-18_02_03_14_3
 include-val-inference: True
-gpu: 2
-sample-size: 3
+gpu: 4
+sample-size: 10

@@ -3,6 +3,7 @@ Provide a CustomPatchesDataset to work with WSI and Patches objects.
 
 """
 
+import random
 from typing import Union
 
 import torch
@@ -19,7 +20,7 @@ class MultiscalePatchesDataset(Dataset):
     CustomPatchesDataset is a pytorch dataset to work with WSI patches
     provides by eihter WSI objects or WSIDatset objects.
     """
-
+    
     def __init__(self,
                  wsi_dataset: Union[WSIDatasetFolder, WSIFromFolder],
                  patches = None,
@@ -74,7 +75,6 @@ class MultiscalePatchesDataset(Dataset):
         context_img = patch.get_context_image()
         
         if self.transform is not None:
-            patch_img = self.transform(patch_img)
-            context_img = self.transform(context_img)
+            patch_img, context_img = self.transform(patch_img, context_img)
 
         return patch_img, context_img, label,

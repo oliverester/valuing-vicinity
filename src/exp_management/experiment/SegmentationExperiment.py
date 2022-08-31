@@ -10,6 +10,7 @@ from torch import nn
 from typing import Dict, List, Tuple
 import torch
 from torchvision import transforms
+import torchvision.transforms.functional as F
 
 from src.deephist.segmentation.attention_segmentation.AttentionPatchesDataset import AttentionPatchesDataset
 from src.deephist.segmentation.attention_segmentation.AttentionPatchesDistDataset import AttentionPatchesDistDataset
@@ -754,7 +755,7 @@ class SegmentationExperiment(MLExperiment):
         self.unnormalize = UnNormalize(mean=rn_mean,
                                        std=rn_std)
         
-        ## validation
+        # Validation augmentations
         val_transforms = [
             transforms.Resize(256),
             transforms.ToTensor(),
@@ -764,27 +765,64 @@ class SegmentationExperiment(MLExperiment):
             val_transforms.append(normalization)
 
         val_aug_transform = transforms.Compose(val_transforms)
-
-        ##train
-        train_transforms = []
-        if self.args.augment is True:
-            #flip along the axis, saturation and brightness transformation.
-            train_transforms.append(transforms.ColorJitter(brightness=self.args.brightness, 
-                                                           contrast=self.args.contrast, 
-                                                           saturation=self.args.saturation, 
-                                                           hue=self.args.hue))        
         
+        def val_aug(*imgs): 
+            aug_imgs = []
+            for img in imgs:
+                aug_imgs.append(val_aug_transform(img))
+            return tuple(aug_imgs) if len(aug_imgs) > 1 else aug_imgs[0]
+         
+        # Train augmentations
+        train_transforms = []       
         train_transforms.extend([
             transforms.Resize(256),
             transforms.ToTensor(),
         ])
-
         if self.args.normalize is True:
             train_transforms.append(normalization)
 
         train_aug_transform = transforms.Compose(train_transforms)
-        
-        return train_aug_transform, val_aug_transform
+         
+       
+        def train_aug(*imgs):
+            # Ensure that same random transformation (colorjitter) is applied for all images in list
+            # This is needed for multiscale patch and context patch
+            
+            if self.args.augment is True:
+                class FixedRandomColorJitter(nn.Module):
+                    def __init__(self, brightness, contrast, saturation, hue) -> None:
+                        super().__init__()
+                        self.fn_idx, self.brightness_factor, self.contrast_factor, self.saturation_factor, self.hue_factor = transforms.ColorJitter.get_params(brightness=(1-brightness,1+brightness), 
+                                                                     contrast=(1-contrast,1+contrast), 
+                                                                     saturation=(1-saturation,1+saturation), 
+                                                                     hue=(-hue,hue))
+                    def forward(self, img):
+                        for fn_id in self.fn_idx:
+                                    if fn_id == 0 and self.brightness_factor is not None:
+                                        img = F.adjust_brightness(img, self.brightness_factor)
+                                    elif fn_id == 1 and self.contrast_factor is not None:
+                                        img = F.adjust_contrast(img, self.contrast_factor)
+                                    elif fn_id == 2 and self.saturation_factor is not None:
+                                        img = F.adjust_saturation(img, self.saturation_factor)
+                                    elif fn_id == 3 and self.hue_factor is not None:
+                                        img = F.adjust_hue(img, self.hue_factor)
+                        return img
+                # a random ColorJitter, that stays fixed after intialization
+                fixed_color_jitter = FixedRandomColorJitter(brightness=self.args.brightness,
+                                                            contrast=self.args.contrast,
+                                                            saturation=self.args.saturation,
+                                                            hue=self.args.hue)    
+            else:
+                fixed_color_jitter = nn.Identity()
+            
+            train_aug_drawn_transform = transforms.Compose([fixed_color_jitter] + train_aug_transform.transforms)
+            
+            aug_imgs = []
+            for img in imgs:
+                aug_imgs.append(train_aug_drawn_transform(img))
+            return tuple(aug_imgs) if len(aug_imgs) > 1 else aug_imgs[0]
+
+        return train_aug, val_aug
     
     def collate_patches(self, batch):
         return Batch(batch)

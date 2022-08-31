@@ -17,7 +17,8 @@ if __name__ == '__main__':
     
     conf_parser.add_argument("-c", "--conf_file",
                         help="Specify config file", metavar="FILE")
-    args = conf_parser.parse_args()
+    # unkown args are ignoed but might be passed by experiment config parsers
+    args, _ = conf_parser.parse_known_args()
     
     try:
         run_experiment(exp=SegmentationExperiment(config_path=args.conf_file))

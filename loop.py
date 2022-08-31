@@ -263,6 +263,5 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_rcc/attention/deeplab_res50/variants",
-                  #config_folder="configs_test"
+                  config_folder="configs_paper/configs_rcc/attention/deeplab_res50",
                  )

@@ -31,7 +31,7 @@ use-ln: true
 emb-dropout: 0
 att-dropout: 0
 sin-pos-encoding: true
-learn-pos-encoding: true
+learn-pos-encoding: false
 num-attention-heads: 8
 attention-hidden-dim: 1024
 use-self-attention: false
@@ -41,4 +41,5 @@ augment: true
 performance-metric: loss
 attention-on: true
 fill-in-eval: true
-sample-size: 5
+helper-loss: true
+combine-weight: 0.8

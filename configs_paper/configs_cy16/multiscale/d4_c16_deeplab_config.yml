@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet18
-gpu: 2
+gpu: 5
 workers: 8
 nfold: 5
 batch-size: 32
@@ -13,7 +13,7 @@ patch-label-type: mask
 draw-patches-per-class: 100
 vali-split: 0.2
 learning-rate: 0.0001
-lr-gamma: 0.95
+lr-gamma: 0.975
 adjust-lr: true
 image-label-in-path: false
 normalize: true

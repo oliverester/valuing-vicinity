@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 2
+gpu: 0
 workers: 8
 nfold: 5
 batch-size: 32
@@ -29,9 +29,9 @@ embedding-dim: 1024
 k-neighbours: 8
 use-ln: true
 emb-dropout: 0
-att-dropout: 0
-sin-pos-encoding: true
-learn-pos-encoding: false
+att-dropout: 0.25
+sin-pos-encoding: false
+learn-pos-encoding: true
 num-attention-heads: 8
 attention-hidden-dim: 1024
 use-self-attention: false
@@ -41,6 +41,6 @@ augment: true
 performance-metric: loss
 attention-on: true
 fill-in-eval: true
-
 helper-loss: true
 combine-weight: 0.8
+context-conv: 3

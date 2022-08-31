@@ -23,5 +23,5 @@ def fix_logs(exp_path: str):
         
 
 if __name__ == "__main__":
-    fix_logs(exp_path="logdir_paper/configs_paper/configs_rcc/semantic/unet_resnet50/d128_unet_config-2022-08-11_11_07_32_4")
+    fix_logs(exp_path="logdir_paper/configs_paper/configs_rcc/attention/deeplab_res50/variants/a_d16_k8_deeplab_transformer_config-2022-08-17_14_25_11_1")
     

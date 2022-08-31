@@ -1,6 +1,6 @@
 arch: deeplabv3
 encoder: resnet50
-gpu: 2
+gpu: 0
 workers: 8
 nfold: 5
 batch-size: 32

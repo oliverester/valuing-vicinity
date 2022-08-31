@@ -1,13 +1,13 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
-            "name": "Python: Aktuelle Datei",
+            "name": "vv main",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
-            "args": ["--conf_file", "configs_paper/configs_rcc/semantic/deeplab_resnet50/d16_deeplab_config.yml",
-                     "--logdir", "logdir_paper/test"],
+            "program": "debug.py",
+            "args": ["--conf_file", "configs_paper/configs_rcc/attention/deeplab_res50/variants2/a_d16_k8_deeplab_context_conv3_config_fixed.yml"],
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {

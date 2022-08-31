@@ -1,19 +1,19 @@
 arch: deeplabv3
 encoder: resnet18
-gpu: 3
+gpu: 4
 workers: 8
 nfold: 5
 batch-size: 32
 val-batch-size: 64
 epochs: 100
-train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d1_train
+train-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d16_train
 label-map-file: /homes/oester/repositories/prae/data/segmentation/label_map_camelyon.json
 include-classes: [0,1,2]
 patch-label-type: mask
 draw-patches-per-class: 100
 vali-split: 0.2
 learning-rate: 0.0001
-lr-gamma: 0.975
+lr-gamma: 0.95
 adjust-lr: true
 image-label-in-path: false
 normalize: true
@@ -27,6 +27,8 @@ use-ce-weights: false
 overlay-polygons: true
 log-details: false
 seed: 13
-augment: true
+augment: false
 performance-metric: loss
 multiscale-on: true
+sample-size: 5
+
