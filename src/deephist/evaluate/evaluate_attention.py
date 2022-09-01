@@ -42,7 +42,7 @@ def evaluate_details(patch_coordinates,
                     
                     #patches_loader = exp.data_provider.get_wsi_loader(patches=[p for p in list(context_patches.flatten()) if p is not None])
                     with selected_wsi.restrict_patches(context_patches_list):
-                        outputs, labels, attentions, n_masks = memory_inference(data_loader=wsi_loader,
+                        outputs, labels, attentions, n_masks, _ = memory_inference(data_loader=wsi_loader,
                                                                                 model=model,
                                                                                 gpu=exp.args.gpu)  
                     # merge "batches"

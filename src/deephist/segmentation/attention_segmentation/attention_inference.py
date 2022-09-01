@@ -30,9 +30,9 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
         else:
             warnings.warn("Attention inference but memory is blocked")
             
-        outputs, labels, attentions, n_masks = memory_inference(data_loader=data_loader,
-                                                                model=model,
-                                                                gpu=gpu)
+        outputs, labels, attentions, n_masks, _ = memory_inference(data_loader=data_loader,
+                                                                   model=model,
+                                                                   gpu=gpu)
         
     if return_attention:
         return outputs, labels, attentions, n_masks
@@ -42,11 +42,13 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
   
 def memory_inference(data_loader,
                      model,
-                     gpu):
+                     gpu, 
+                     return_cls_dist=False):
     outputs = []
     labels = []
     attentions = []
     neighbour_masks = []
+    neighbour_dists = []
     
     m = nn.Softmax(dim=1).cuda(gpu)
     model.cuda(gpu)
@@ -58,6 +60,8 @@ def memory_inference(data_loader,
             images = batch['img']
             targets = batch['mask']
             neighbours_idx = batch['patch_neighbour_idxs']
+            if return_cls_dist is True:
+                neighbour_dists.append(batch['neighbour_dist'])
             
             if gpu is not None:
                 images = images.cuda(gpu, non_blocking=True)
@@ -77,5 +81,5 @@ def memory_inference(data_loader,
             attentions.append(attention.cpu() if attention is not None else None)
             neighbour_masks.append(k_neighbour_mask.cpu() if k_neighbour_mask is not None else None)
             
-    return outputs, labels, attentions, neighbour_masks
+    return outputs, labels, attentions, neighbour_masks, neighbour_dists
     
