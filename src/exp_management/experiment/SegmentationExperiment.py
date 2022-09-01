@@ -61,24 +61,18 @@ class SegmentationExperiment(MLExperiment):
         
         # to define differnet dataset types for inference
         inference_dataset_type = None
-        inference_collate_fn = None
         
         if args.attention_on:
             if args.online:
                 train_dataset_type = AttentionPatchesDatasetOnline
-                train_collate_fn = self.collate_neighbour_patches_online
             elif args.helper_loss:
                 train_dataset_type = AttentionPatchesDistDataset
-                train_collate_fn = self.collate_neighbour_patches_dist
             else:
                 train_dataset_type = AttentionPatchesDataset
-                train_collate_fn = self.collate_neighbour_patches
         elif args.multiscale_on:
             train_dataset_type = MultiscalePatchesDataset
-            train_collate_fn = self.collate_multiscale_patches            
         else:
             train_dataset_type = CustomPatchesDataset
-            train_collate_fn = self.collate_patches # torch default collate
             
         data_provider = DataProvider(train_data=args.train_data,
                                      test_data=args.test_data,
@@ -100,9 +94,7 @@ class SegmentationExperiment(MLExperiment):
                                      workers=args.workers,
                                      gpu=args.gpu,
                                      train_dataset_type=train_dataset_type,
-                                     train_collate_fn=train_collate_fn,
                                      inference_dataset_type=inference_dataset_type,
-                                     inference_collate_fn=inference_collate_fn,
                                      attention_on=args.attention_on,
                                      embedding_dim=args.embedding_dim,
                                      k_neighbours=args.k_neighbours,
@@ -823,107 +815,6 @@ class SegmentationExperiment(MLExperiment):
             return tuple(aug_imgs) if len(aug_imgs) > 1 else aug_imgs[0]
 
         return train_aug, val_aug
-    
-    def collate_patches(self, batch):
-        return Batch(batch)
-    
-    def collate_neighbour_patches(self, batch):
-        return NeighbourBatch(batch)
-    
-    def collate_neighbour_patches_dist(self, batch):
-        return NeighbourBatchDist(batch)
-    
-    def collate_neighbour_patches_online(self, batch):
-        return NeighbourBatchOnline(batch)
-    
-    def collate_multiscale_patches(self, batch):
-        return MultiscaleBatch(batch)
-        
-  
-class Batch:
-    def __init__(self, batch) -> None:    
-        self.img = torch.stack([item[0] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
-        
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        return {'img': self.img,
-                'mask': self.mask,
-                }
-class NeighbourBatchDist:
-    def __init__(self, batch) -> None:    
-        self.img = torch.stack([item[0] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
-        self.dist = torch.stack([torch.FloatTensor(item[2]) for item in batch])
-        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[3]) for item in batch]))])
-        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[4]) for item in batch]))]) 
-        
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        self.dist = self.dist.pin_memory()
-        self.patch_idx = self.patch_idx.pin_memory()
-        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
-        return {'img': self.img,
-                'mask': self.mask,
-                'dist': self.dist,
-                'patch_idx': self.patch_idx, 
-                'patch_neighbour_idxs': self.patch_neighbour_idxs
-                }
-     
-class NeighbourBatch:
-    def __init__(self, batch) -> None:    
-        self.img = torch.stack([item[0] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
-        self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[2]) for item in batch]))])
-        self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[3]) for item in batch]))]) 
-        
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        self.patch_idx = self.patch_idx.pin_memory()
-        self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
-        return {'img': self.img,
-                'mask': self.mask,
-                'patch_idx': self.patch_idx, 
-                'patch_neighbour_idxs': self.patch_neighbour_idxs
-                }
-    
-class NeighbourBatchOnline:
-    def __init__(self, batch) -> None:    
-        self.img = torch.stack([item[0] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
-        self.neighbour_img = torch.stack([item[2] for item in batch]) 
-        self.neighbour_mask = torch.stack([item[3] for item in batch])
-        
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        self.neighbour_img = self.neighbour_img.pin_memory()
-        self.neighbour_mask = self.neighbour_mask.pin_memory()
-        return {'img': self.img,
-                'mask': self.mask,
-                'neighbour_img': self.neighbour_img, 
-                'neighbour_mask': self.neighbour_mask
-               }
-    
-class MultiscaleBatch:
-    def __init__(self, batch) -> None:    
-        self.img = torch.stack([item[0] for item in batch])
-        self.context_img = torch.stack([item[1] for item in batch])
-        self.mask = torch.stack([torch.LongTensor(item[2]) for item in batch])
 
-    # custom memory pinning method on custom type
-    def pin_memory(self):
-        self.img = self.img.pin_memory()
-        self.context_img = self.context_img.pin_memory()
-        self.mask = self.mask.pin_memory()
-        return {'img': self.img,
-                'mask': self.mask,
-                'context_img': self.context_img
-                }
+
+     

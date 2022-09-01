@@ -6,6 +6,7 @@ Provide a CustomPatchesDataset to work with WSI and Patches objects.
 from contextlib import contextmanager
 from typing import List, Union
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -17,15 +18,15 @@ from src.pytorch_datasets.wsi.wsi_from_folder import WSIFromFolder
 from src.pytorch_datasets.wsi_dataset.wsi_dataset_from_folder import WSIDatasetFolder
 
 
-class AttentionPatchesDistDataset(Dataset):
+class AttentionPatchesDistAnalysisDataset(Dataset):
     """
-    CustomPatchesDataset is a pytorch dataset to work with WSI patches
-    provides by eihter WSI objects or WSIDatset objects.
+    AttentionPatchesDistAnalysisDataset is a pytorch dataset to provide patches.
+    Here, we include the class distribution of all neighbourhood patches for attention analysis.
+    
     """
-
     @staticmethod
     def collate(batch):
-        return NeighbourBatchDist(batch)
+        return NeighbourBatchDistAnalysis(batch)
 
     def __init__(self,
                  wsi_dataset: Union[WSIDatasetFolder, WSIFromFolder] = None,
@@ -39,16 +40,17 @@ class AttentionPatchesDistDataset(Dataset):
                 to get patches from.
             transform (transforms.Compose, optional): Augmentation pipeline. Defaults to None.
         """
-        if patches is not None and wsi_dataset is not None:
-            raise Exception("Either provide patches or wsis.")
-        elif patches is None and wsi_dataset is not None:
+        assert patches is not None or wsi_dataset is not None, "Either provide patches or wsi_dataset."
+
+        if patches is None and wsi_dataset is not None:
             self.use_patches = False
         else:
             self.use_patches = True
-            
-        self.wsi_dataset = wsi_dataset
+        
+        self.wsi_dataset = wsi_dataset 
         self.patches = patches
         self.transform = transform
+        self.n_classes = self.wsi_dataset.label_handler.n_classes
                 
     def get_label_handler(self) -> LabelHandler:
         """Get the label handler of the WSIs to access map to original labels.
@@ -88,13 +90,22 @@ class AttentionPatchesDistDataset(Dataset):
         
         patch_img, label = patch()
         
+        neighbour_patches , _ = patch.get_k_neighbours()
+        # initialize empty neighbourhood class distribution 
+        neighbour_dist = np.zeros(neighbour_patches.shape + (self.n_classes,))
+        
         with self.wsi_dataset.patch_label_mode('distribution'):
-            dist = patch.get_label()
-      
+            # construct class distribution of neighbourhood
+            for x in range(neighbour_patches.shape[0]):
+                for y in range(neighbour_patches.shape[0]):
+                    patch = neighbour_patches[x,y]
+                    if patch is not None:
+                        neighbour_dist[x,y] = patch.get_label()
+            
         if self.transform is not None:
             patch_img = self.transform(patch_img)
 
-        return patch_img, label, dist, patch_idx, patch_neighbour_idxs
+        return patch_img, label, neighbour_dist, patch_idx, patch_neighbour_idxs
     
     @contextmanager
     def all_patch_mode(self):
@@ -104,11 +115,11 @@ class AttentionPatchesDistDataset(Dataset):
             yield(self)
 
 
-class NeighbourBatchDist:
+class NeighbourBatchDistAnalysis:
     def __init__(self, batch) -> None:    
         self.img = torch.stack([item[0] for item in batch])
         self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
-        self.dist = torch.stack([torch.FloatTensor(item[2]) for item in batch])
+        self.neighbour_dist = torch.stack([torch.FloatTensor(item[2]) for item in batch])
         self.patch_idx = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[3]) for item in batch]))])
         self.patch_neighbour_idxs = torch.stack([torch.LongTensor(l) for l in list(zip(*[(item[4]) for item in batch]))]) 
         
@@ -116,13 +127,12 @@ class NeighbourBatchDist:
     def pin_memory(self):
         self.img = self.img.pin_memory()
         self.mask = self.mask.pin_memory()
-        self.dist = self.dist.pin_memory()
+        self.neighbour_dist = self.neighbour_dist.pin_memory()
         self.patch_idx = self.patch_idx.pin_memory()
         self.patch_neighbour_idxs = self.patch_neighbour_idxs.pin_memory()
         return {'img': self.img,
                 'mask': self.mask,
-                'dist': self.dist,
+                'neighbour_dist': self.neighbour_dist,
                 'patch_idx': self.patch_idx, 
                 'patch_neighbour_idxs': self.patch_neighbour_idxs
                 }
-     

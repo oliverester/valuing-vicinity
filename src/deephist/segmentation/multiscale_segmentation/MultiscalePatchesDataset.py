@@ -21,6 +21,10 @@ class MultiscalePatchesDataset(Dataset):
     provides by eihter WSI objects or WSIDatset objects.
     """
     
+    @staticmethod
+    def collate(batch):
+        return MultiscaleBatch(batch)
+        
     def __init__(self,
                  wsi_dataset: Union[WSIDatasetFolder, WSIFromFolder],
                  patches = None,
@@ -78,3 +82,21 @@ class MultiscalePatchesDataset(Dataset):
             patch_img, context_img = self.transform(patch_img, context_img)
 
         return patch_img, context_img, label,
+    
+
+class MultiscaleBatch:
+    def __init__(self, batch) -> None:    
+        self.img = torch.stack([item[0] for item in batch])
+        self.context_img = torch.stack([item[1] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[2]) for item in batch])
+
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.context_img = self.context_img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        return {'img': self.img,
+                'mask': self.mask,
+                'context_img': self.context_img
+                }
+        

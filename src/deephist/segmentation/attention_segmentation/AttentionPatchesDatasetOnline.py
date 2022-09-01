@@ -21,6 +21,10 @@ class AttentionPatchesDatasetOnline(Dataset):
     CustomPatchesDataset is a pytorch dataset to work with WSI patches
     provides by eihter WSI objects or WSIDatset objects.
     """
+    
+    @staticmethod
+    def collate(batch):
+        return NeighbourBatchOnline(batch)
 
     def __init__(self,
                  wsi_dataset: Union[WSIDatasetFolder, WSIFromFolder] = None,
@@ -89,3 +93,22 @@ class AttentionPatchesDatasetOnline(Dataset):
         """
         with self.wsi_dataset.all_patch_mode():
             yield(self)
+
+class NeighbourBatchOnline:
+    def __init__(self, batch) -> None:    
+        self.img = torch.stack([item[0] for item in batch])
+        self.mask = torch.stack([torch.LongTensor(item[1]) for item in batch])
+        self.neighbour_img = torch.stack([item[2] for item in batch]) 
+        self.neighbour_mask = torch.stack([item[3] for item in batch])
+        
+    # custom memory pinning method on custom type
+    def pin_memory(self):
+        self.img = self.img.pin_memory()
+        self.mask = self.mask.pin_memory()
+        self.neighbour_img = self.neighbour_img.pin_memory()
+        self.neighbour_mask = self.neighbour_mask.pin_memory()
+        return {'img': self.img,
+                'mask': self.mask,
+                'neighbour_img': self.neighbour_img, 
+                'neighbour_mask': self.neighbour_mask
+               }

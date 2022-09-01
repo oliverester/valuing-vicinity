@@ -76,6 +76,8 @@ class WSIFromFolder():
         
         self._restricted_patches = None
         
+        self.label_handler = self.wsi_dataset.label_handler
+        
         self._initialize_memory()
 
         
@@ -416,7 +418,7 @@ class WSIFromFolder():
         Pool patch predictions to one wsi prediction. Consider all_patch_mode context manager to include all or drawn patches
         """
         if self._prediction is None:
-            n_classes = len(self.wsi_dataset.label_handler.classes)
+            n_classes = len(self.label_handler.classes)
             n_patches = len(self.get_patches())
             predictions = np.zeros(shape=(n_patches, n_classes))
 
@@ -429,7 +431,7 @@ class WSIFromFolder():
         return prediction
         
     def get_pred_dict(self):
-        return {self.wsi_dataset.label_handler.decode(pytorch_class): round(pred.item(),4)
+        return {self.label_handler.decode(pytorch_class): round(pred.item(),4)
                 for pytorch_class, pred in enumerate(self.get_prediction())}
         
     @contextmanager

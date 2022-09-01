@@ -5,8 +5,9 @@ import torch
 
 from src.exp_management.run_experiment import reload_model
 from src.exp_management.experiment.Experiment import Experiment
-from src.deephist.segmentation.attention_segmentation.attention_inference import memory_inference
 from src.exp_management.tracking import Visualizer
+from src.deephist.segmentation.attention_segmentation.attention_inference import memory_inference
+from src.deephist.segmentation.attention_segmentation.AttentionPatchesDistAnalysisDataset import AttentionPatchesDistAnalysisDataset
 
 def run_attention_analysis(exp: Experiment):
     """Anaylse attention 
@@ -29,7 +30,7 @@ def run_attention_analysis(exp: Experiment):
             
             attention_analysis(exp=exp, 
                                model=model, 
-                               wsis=exp.data_provider.cv_set.holdout_sets[fold].test_wsi_dataset.wsis)
+                               wsis=exp.data_provider.test_wsi_dataset.wsis)
             
 def attention_analysis(exp,
                        model,
@@ -55,21 +56,26 @@ def attention_analysis(exp,
     for wsi in wsis:
         with wsi.inference_mode(): # initializes memory
             logging.getLogger('exp').info("Building memory")
-            wsi_loader = exp.data_provider.get_wsi_loader(wsi=wsi)
+            # loader wsi with special dataset including neighbourhood patch distribution 
+            wsi_loader = exp.data_provider.get_wsi_loader(wsi=wsi, 
+                                                          dataset_type=AttentionPatchesDistAnalysisDataset)
             
             # fill memory
             model.initialize_memory(**wsi.meta_data['memory'], gpu=exp.args.gpu)
             model.fill_memory(data_loader=wsi_loader, gpu=exp.args.gpu)
             
+            # TODO: get neighbourhood class distribution / soft- one-hot?
             outputs, labels, attentions, n_masks = memory_inference(data_loader=wsi_loader,
                                                                     model=model,
-                                                                    gpu=exp.args.gpu)  
+                                                                    gpu=exp.args.gpu)
+              
             # merge "batches"
             outputs, labels, attentions, n_masks = torch.cat(outputs), torch.cat(labels), torch.cat(attentions), torch.cat(n_masks)
                 
             # attention dim: patches, heads, 1, token
             n_patches, heads, _, _ = attentions.shape
             
+            # TODO: consider n_masks for mean calculation
             attentions = torch.mean(attentions.view((n_patches, heads, (k*2+1),(k*2+1))), dim=1)
             
             # dot-product to apply distance masks
