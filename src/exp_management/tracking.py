@@ -5,21 +5,25 @@ and visualize artefacts
 from collections import deque, defaultdict
 import datetime
 import logging
+from math import atan2, pi
+import scipy
 from pathlib import Path
 import random
 from typing import List
 import numpy as np
+from numpy import linalg as LA
 import time
 import yaml
 
 import cv2
 import matplotlib.pyplot as plt
+import matplotlib
 import PIL
 import torch
 import torch.nn as nn
 
 
-from src.exp_management.helper import get_concat_v
+from src.exp_management.helper import get_concat_v, getcov
 from src.exp_management.evaluation.tsne import visualize_tsne
 from src.exp_management.evaluation.plot_patches import plot_patches
 from src.exp_management.evaluation.plot_wsi import plot_wsi
@@ -589,7 +593,9 @@ class Visualizer():
                          section: np.ndarray,
                          log_path,
                          mode='gt',
-                         attention=False):
+                         attention=False,
+                         att_estimates=False,
+                         plot_coord=True):
         """ 
         Args:
             section (nd.Array): 2-D array of patches 
@@ -608,11 +614,16 @@ class Visualizer():
         wsi_name = center_patch.wsi.name
         center_x = center_patch.x_coord
         center_y = center_patch.y_coord
-        patches_canvas =PIL.Image.new('RGB', (n_patches*patch_size, n_patches*patch_size), color='white')
-        
+       
          # if attention on, section area must fit attention area
-        if attention is True:
-            assert(l == k)
+        if attention is True and (l != k):
+            # crop section to attention area:
+            section = section[(l-k):(l+k+1),(l-k):(l+k+1)]
+            n_patches = section.shape[0]
+            l = (n_patches-1)//2
+
+        patches_canvas = PIL.Image.new('RGB', (n_patches*patch_size, n_patches*patch_size), color='white')
+         
         # paste patches 
         for x,y in np.ndindex(section.shape):
             if section[x,y] is None:
@@ -625,8 +636,9 @@ class Visualizer():
             elif mode == 'org':
                 patch = section[x,y].get_image()
             patches_canvas.paste(patch,(patch_size*x,patch_size*y))
-            
+
         patches_canvas_draw = PIL.ImageDraw.Draw(patches_canvas)
+        
         # paste lines
         for x,y in np.ndindex(section.shape):
             if section[x,y] is None:
@@ -634,17 +646,162 @@ class Visualizer():
             shape = [(patch_size*x, patch_size*y), (patch_size*x + patch_size, patch_size*y + patch_size)]
             patches_canvas_draw.rectangle(shape, outline ="black")
         
+        # plotting ellipsis
+        # determine 90 % quantile of chi squared dist with df=2
+        alpha=0.10
+        error_factor = scipy.stats.chi2.ppf(1-alpha, df=2)
+        
+        if att_estimates is True:
+               
+            mode = mode + "_e"
+
+            avg_estimates = center_patch.wsi.avg_estimates
+
+            attention_img = PIL.Image.new('RGBA', (n_patches*patch_size, n_patches*patch_size), (255,255,255,180))
+            attention_canvas_array = np.array(attention_img)
+            
+            for x,y in np.ndindex(section.shape):
+                if section[x,y] is None:
+                    continue
+                # draw att. estimates
+                estimates = section[x,y].estimates
+                neighbourh_to_image = patch_size / (k*2+1)
+                # y / x is flipped
+                y_c = (estimates[0]) * neighbourh_to_image
+                x_c = (estimates[1]) * neighbourh_to_image
+                radius = (estimates[2]) * neighbourh_to_image 
+                avg_radius = avg_estimates[2] * neighbourh_to_image
+                
+                cmap = matplotlib.cm.get_cmap('seismic')
+                #high radius: red , small radius: blue
+                heatmap_color = [int(255*c) for c in cmap(0.5 + (radius-avg_radius)/patch_size)]
+                # getcov(radius, scale, rotate)
+                cov = getcov(estimates[2], estimates[3], estimates[4])
+                
+                eigenvalues, eigenvectors  = LA.eig(cov)
+                # determine angle to first eigenvector to x-axis:
+                np.angle(eigenvectors[0], deg=True)
+                # angle to x-axis: atans(y,x)
+                angle = atan2(eigenvectors[0][1], eigenvectors[0][0]) * 180 / pi
+                # now: subtract 90 degrees because of different coorodinates in opencv
+                angle -= 90
+                cv2.ellipse(img=attention_canvas_array,
+                            center=(patch_size*x + int(x_c),
+                                    patch_size*y + int(y_c)), 
+                            axes=(int((error_factor*eigenvalues[0])**(1/2) *neighbourh_to_image), 
+                                  int((error_factor*eigenvalues[1])**(1/2) *neighbourh_to_image)), 
+                            angle=angle,
+                            startAngle=0, 
+                            endAngle=360,
+                            color=heatmap_color,
+                            thickness=-1)
+                # ellipse border
+                cv2.ellipse(img=attention_canvas_array,
+                            center=(patch_size*x + int(x_c),
+                                    patch_size*y+ int(y_c)), 
+                            axes=(int((error_factor*eigenvalues[0])**(1/2) *neighbourh_to_image),
+                                  int((error_factor*eigenvalues[1])**(1/2) *neighbourh_to_image)), 
+                            angle=angle,
+                            startAngle=0, 
+                            endAngle=360,
+                            color=(0,0,0,127),
+                            thickness=1)
+                cv2.arrowedLine(img=attention_canvas_array,
+                                pt1=(int(patch_size*x+patch_size/2), 
+                                     int(patch_size*y+patch_size/2)),
+                                # strech arrow into direction:
+                                pt2=(int(patch_size*x+x_c+5*(x_c-patch_size/2)), int(patch_size*y+y_c+5*(y_c-patch_size/2))),
+                                color=(0,0,0,127),
+                                thickness=5,
+                                tipLength=0.4)
+            attention_canvas = PIL.Image.fromarray(attention_canvas_array, mode='RGBA')
+            patches_canvas.paste(attention_canvas, (0,0), attention_canvas)
+    
         if attention is True:
             mode = mode + "_a"
-            # attention masks mean over all heads
-            attention = torch.mean(center_patch.attention.view((-1,(k*2+1),(k*2+1))), dim=0).cpu().numpy()
-            # hack because the memory has x and y changed..
-            attention = np.moveaxis(attention, 0, -1)
-            mask = cv2.resize((attention/ attention.max()* 0.9 + 0.1), patches_canvas.size)[..., np.newaxis]
-            patches_canvas = PIL.Image.fromarray((mask * patches_canvas).astype("uint8"))
+            # attention masks over all heads
+            attention = center_patch.attention.numpy()
+            # enhance attentions by factor 10
+            mask = cv2.resize((attention**(1/2)*4), patches_canvas.size)
+            cmap = matplotlib.cm.get_cmap('afmhot')
+            c_mask =  cmap(mask)
+            # set alpha channel
+            c_mask[:,:,3] = 0.8
+            c_mask_canvas = PIL.Image.fromarray((c_mask*255).astype("uint8"), mode='RGBA')
+            patches_canvas.paste(c_mask_canvas, (0,0), c_mask_canvas)
             
-        patches_canvas.save(Path(log_path) / f'patch_area_{center_x}_{center_y}_{wsi_name}_k{n_patches}_{mode}.png')
+            # draw ellipse
+            estimates = center_patch.estimates
+            neighbourh_to_image = patch_size
+            # x / y is flipped
+            y_c = int((estimates[0]) * neighbourh_to_image)
+            x_c = int((estimates[1]) * neighbourh_to_image)
+            
+            # getcov(radius, scale, rotate)
+            cov = getcov(estimates[2], estimates[3], estimates[4])
+            eigenvalues, eigenvectors  = LA.eig(cov)
+            # angle to x-axis: atans(y,x)
+            angle = atan2(eigenvectors[0][1], eigenvectors[0][0]) * 180 / pi
+            # now: subtract 90 degrees because of different coorodinates in opencv
+            angle -= 90
+            patches_canvas_array = np.array(patches_canvas)
 
+            cv2.ellipse(img=patches_canvas_array,
+                        center=(x_c,
+                                y_c), 
+                        axes=(int((error_factor*eigenvalues[0])**(1/2) *neighbourh_to_image), 
+                                int((error_factor*eigenvalues[1])**(1/2) *neighbourh_to_image)), 
+                        angle=angle,
+                        startAngle=0, 
+                        endAngle=360,
+                        color=(255,255,255,255),
+                        thickness=8)
+             # from center of center patch to center of distribtuon
+            x_center = int(patch_size*k+patch_size/2)
+            y_center = int(patch_size*k+patch_size/2)
+            cv2.drawMarker(img=patches_canvas_array, 
+                           position=(x_center,x_center),
+                           color=(255, 204, 0), 
+                           markerType=cv2.MARKER_TILTED_CROSS, 
+                           markerSize=100,
+                           thickness=15)
+            # first ellipsis axis
+            cv2.arrowedLine(img=patches_canvas_array,
+                            pt1=(x_c,
+                                 y_c), 
+                            pt2=(int(x_c + eigenvectors[0][1] * (error_factor*eigenvalues[0])**(1/2) *neighbourh_to_image),
+                                 int(y_c - eigenvectors[0][0] * (error_factor*eigenvalues[0])**(1/2) *neighbourh_to_image)), 
+                            color=(255,255,255,255),
+                            thickness=8)
+            # second ellipsis axis
+            cv2.arrowedLine(img=patches_canvas_array,
+                            pt1=(x_c,
+                                 y_c), 
+                            pt2=(int(x_c + eigenvectors[1][1] * (error_factor*eigenvalues[1])**(1/2) *neighbourh_to_image),
+                                 int(y_c - eigenvectors[1][0] * (error_factor*eigenvalues[1])**(1/2) *neighbourh_to_image)), 
+                            color=(255,255,255,255),
+                            thickness=8)
+            cv2.arrowedLine(img=patches_canvas_array,
+                            pt1=(x_center,
+                                 y_center),
+                            # strech arrow into direction:
+                            pt2=(x_c, y_c),
+                            color=(0,128,255,255),
+                            thickness=16,
+                            tipLength=0.4)
+            
+            
+            patches_canvas = PIL.Image.fromarray(patches_canvas_array, mode='RGB')
+
+        if plot_coord is True:
+            for x,y in np.ndindex(section.shape):
+                if section[x,y] is None:
+                    continue
+                patches_canvas_draw.text((patch_size*x, patch_size*y), str(section[x,y].get_coordinates()))
+                
+        patches_canvas.save(Path(log_path) / f'patch_area_{center_x}_{center_y}_{wsi_name}_k{l}_{mode}.png')        
+        patches_canvas = patches_canvas.resize((100*l,100*l),PIL.Image.ANTIALIAS)
+        patches_canvas.save(Path(log_path) / f'patch_area_{center_x}_{center_y}_{wsi_name}_k{l}_{mode}_small.png')
 
     def wsi_plot(self,
                  tag,

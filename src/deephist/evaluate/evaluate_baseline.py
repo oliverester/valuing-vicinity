@@ -10,7 +10,7 @@ from src.exp_management.tracking import Visualizer
 
 
 def evaluate_details(patch_coordinates,
-                     include_k,
+                     include_radius,
                      exp,
                      model,
                      wsis):
@@ -24,12 +24,16 @@ def evaluate_details(patch_coordinates,
             except Exception as e:
                 logging.getLogger('exp').error(f"Warning: Cannot find WSI {wsi_name}. Contueing")
                 continue
+            
+            log_path = Path(exp.log_path) / 'inference' / wsi_name
+            log_path.mkdir(exist_ok=True, parents=True)
+            
             # build memory on that WSI
             with selected_wsi.inference_mode(): # sets wsi to idx 0 for memory
                 for x, y in patch_coordinates:
                     try:
                         patch = selected_wsi.get_patch_from_position(x,y)
-                        context_patches, _  = patch.get_neighbours(k=include_k)
+                        context_patches, _  = patch.get_neighbours(k=include_radius)
                         
                         patches = [p for p in list(context_patches.flatten()) if p is not None]
                         
@@ -50,15 +54,15 @@ def evaluate_details(patch_coordinates,
                             
                         viz.plot_wsi_section(section=context_patches,
                                         mode='org',
-                                        log_path=exp.log_path)
+                                        log_path=log_path)
                         # gt
                         viz.plot_wsi_section(section=context_patches,
                                             mode='gt',
-                                            log_path=exp.log_path)
+                                            log_path=log_path)
                         # pred
                         viz.plot_wsi_section(section=context_patches,
                                             mode='pred',
-                                            log_path=exp.log_path)
+                                            log_path=log_path)
                         
                     except Exception as e:
                         logging.getLogger('exp').error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")

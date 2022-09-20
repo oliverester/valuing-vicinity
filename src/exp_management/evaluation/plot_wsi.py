@@ -137,14 +137,14 @@ def plot_wsi(wsi: WSIFromFolder,
 
     return wsi_thumbnail
 
-def create_legend_img(colors, labels, loc=3, dpi=150):
+def create_legend_img(colors, labels, loc=3, dpi=150, **kwargs):
     import io
     
     expand=[-5,-5,5,5]
     f = lambda m,c: plt.plot([],[],marker=m, color=c, ls="none")[0]
     handles = [f("s", colors[i]) for i in range(len(labels))]
     plt.figure().clear()
-    legend = plt.legend(handles, labels, loc=loc, framealpha=1, frameon=True)
+    legend = plt.legend(handles, labels, loc=loc, framealpha=1, frameon=True, **kwargs)
     
     fig = legend.figure
     fig.canvas.draw()

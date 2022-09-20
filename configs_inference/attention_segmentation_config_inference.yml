@@ -1,5 +1,4 @@
-test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/w163_d16
-reload-model-folder: logdir_paper/configs_paper/configs_rcc/attention/deeplab_res50/variants/a_d16_k8_deeplab_helperloss08_config-2022-08-18_02_03_14_3
-#include-val-inference: True
+#test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/debug
+reload-model-folder: logdir_paper/configs_paper/configs_rcc/attention/deeplab_res50/variants2/a_d16_k8_deeplab_learn_pos_config_fixed-2022-08-22_09_30_21_0
 gpu: 3
-sample-size: 10
+#folds: [0]

@@ -41,3 +41,6 @@ augment: true
 performance-metric: loss
 attention-on: true
 fill-in-eval: true
+helper-loss: true
+combine-weight: 0.8
+

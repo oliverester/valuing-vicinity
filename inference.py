@@ -5,18 +5,29 @@ from src.exp_management.experiment.SegmentationExperiment import SegmentationExp
 
 if __name__ == "__main__":
 
-    # patch_coordinates = {'RCC-TA-033.001~C': [(14,19), (15,20), (20,20)],
-    #                      'RCC-TA-011.001~J': [(20, 15), (20, 17)],
-    #                      'RCC-TA-004.001~C': [(21, 35)]
-    #                      }
-    
-    patch_coordinates = {'RCC-TA-163.001~B': [(7,12), (8,12), (8,11), (7,11)],
+    patch_coordinates = {'RCC-TA-033.001~C': [(13,24),(11,24),(14,19), (15,20), (20,20)],
+                         'RCC-TA-011.001~J': [(20, 15), (20, 17), (16,16),(21,13)],
+                         'RCC-TA-004.001~C': [(21, 35), (18,36), (18,37)],
+                         'RCC-TA-163.001~B': [(16,13),(18,3),(13,10),(10,14),(13,14),(16,10), (8,10), (10,11), (14,4)],
+                         'RCC-TA-045.001~C': [(20,50), (19,42), (26,42), (24,57),(5,41)],
+                         'RCC-TA-158.001~B': [(13,27)],
+                         'RCC-TA-022.001~F': [(16,18),(5,19),(9,13),(13,15),(16,22),(26,26),(13,32)],
+                         'RCC-TA-066.001~F': [(20,18)],
+                         'RCC-TA-115.001~C': [(12,24)] 
                          }
+    
+    # patch_coordinates = {'RCC-TA-022.001~F': [(16,18),(5,19),(9,13),(13,15),(16,22),(26,26),(13,32)]
+    #                     }
+    
+    # patch_coordinates = {
+    #                      'RCC-TA-045.001~C': [(20,50), (19,42), (26,42), (24,57),(5,41)],
+    #                      }
+    #patch_coordinates = {'RCC-TA-163.001~B': [(18,3),(13,10),(13,14),(16,10), (8,10), (10,11), (14,4)],
+    #                     }
     # patch_coordinates = {'tumor026': [(8,34)],
     #                     }
     
     exp = SegmentationExperiment(config_path='configs_inference/attention_segmentation_config_inference.yml')
     
-    run_attention_analysis(exp)
-        
-    #run_patch_inference(exp, patch_coordinates, k=8)
+    #run_attention_analysis(exp)
+    run_patch_inference(exp, patch_coordinates, radius=18)

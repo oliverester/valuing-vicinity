@@ -1,7 +1,9 @@
+from functools import partial
 import logging
 import logging.config
 import logging.handlers
 import queue
+import signal
 import subprocess
 import threading
 import time
@@ -90,6 +92,15 @@ def run_job_queue(config_folder: str,
     # intialize config queue
     base_configs_files =initialize_config_queue(config_folder, config_queue, logger)
     
+    def signal_handler(config_queue, signal, frame):
+        print('You pressed Ctrl+C!')
+        # put 6x None in config-queue to 
+        for _ in range(6):
+            config_queue.put(None)
+            
+    # start listening on stop signal
+    signal.signal(signal.SIGINT, partial(signal_handler, config_queue))
+    
     gt = threading.Thread(target=gpu_resource_thread, args=(gpu_queue, used_gpu_queue, gpu_file, logger))
     gt.start()
     ct = threading.Thread(target=config_sync_thread, args=(base_configs_files, config_queue, config_folder, logger))
@@ -138,7 +149,13 @@ def run_job(config_queue,
             loop_logger.info(f"Taking {config_file} config from queue")
             loop_logger.info(f"{config_queue.qsize()} tasks on task queue left.")
         except queue.Empty:
-            # config queue is emtpy, stop this thread
+            # config queue is emtpy, wait 10 secs
+            time.sleep(10)
+            continue
+            
+        # thread is killed by None token
+        if config_file is None:
+            print("Interrupting job thread")
             break
         
         # then, get/wait for free gpu resource from queue
@@ -263,5 +280,5 @@ def get_gpus_from_file(path, logger, initial=False):
                 
 if __name__ == '__main__':
     run_job_queue(gpu_file="gpus.yml",
-                  config_folder="configs_paper/configs_rcc/attention/deeplab_res50",
+                  config_folder="configs_paper/configs_cy16/attention/unet_resnet18/variants",
                  )

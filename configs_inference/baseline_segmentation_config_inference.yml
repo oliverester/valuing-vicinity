@@ -1,4 +1,3 @@
 test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/test/HEEL_d16_test
 reload-model-folder: /homes/oester/repositories/prae/logdir_sem_seg/context_d16_c64/attention_segmentation-2022-02-27_17_32_12
-include-val-inference: False
 gpu: 3

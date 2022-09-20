@@ -163,7 +163,7 @@ class DataProvider():
         self._set_augmentation()
 
         # on reload with provided test data, do not prepare train data
-        if self.exp.args.reload_model_folder is None or self.exp.args.include_val_inference is True:
+        if self.exp.args.reload_model_folder is None or self.exp.args.test_data is None:
             self._setup_data()
             self.holdout_set = self._set_holdout_set()
             self.train_set = self._set_train_set()

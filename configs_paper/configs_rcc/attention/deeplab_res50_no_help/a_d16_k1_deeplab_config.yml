@@ -1,5 +1,5 @@
-arch: unet
-encoder: resnet18
+arch: deeplabv3
+encoder: resnet50
 gpu: 2
 workers: 8
 nfold: 5
@@ -26,7 +26,7 @@ criterion: 'cross_entropy'
 use-ce-weights: false
 overlay-polygons: true
 embedding-dim: 1024
-k-neighbours: 12
+k-neighbours: 1
 use-ln: true
 emb-dropout: 0
 att-dropout: 0

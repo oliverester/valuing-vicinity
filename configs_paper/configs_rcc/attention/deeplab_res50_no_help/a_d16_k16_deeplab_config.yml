@@ -1,5 +1,5 @@
-arch: unet
-encoder: resnet18
+arch: deeplabv3
+encoder: resnet50
 gpu: 2
 workers: 8
 nfold: 5

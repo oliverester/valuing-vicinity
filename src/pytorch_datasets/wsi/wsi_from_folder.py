@@ -277,12 +277,20 @@ class WSIFromFolder():
                         y_coord,
                         k):
         # watch out! map has a 0-padding of border size self._pad_size to avoid out of array selection
-        # so we first shift coords by pad_size, then we adjust for k
-        k_neighbours = self._patch_map[((x_coord+self._pad_size)-k):((x_coord+self._pad_size)+k+1),
-                                       ((y_coord+self._pad_size)-k):((y_coord+self._pad_size)+k+1)
+        # so we first shift coords by pad_size, then we adjust for k.
+        k_neighbours = self._patch_map[max((x_coord+self._pad_size-k),0):min((x_coord+self._pad_size+k+1),self._patch_map.shape[0]),
+                                       max((y_coord+self._pad_size-k),0):min((y_coord+self._pad_size+k+1),self._patch_map.shape[1])
                                        ]
-        k_neighbours_mask = (k_neighbours != None).astype(int) 
-         
+        # pad in case of a large "k"
+        pad_left = max(-(x_coord+self._pad_size-k),0)
+        pad_right = max((x_coord+self._pad_size+k+1)-self._patch_map.shape[0],0) 
+        pad_top = max(-(y_coord+self._pad_size-k),0)
+        pad_bottom = max((y_coord+self._pad_size+k+1)-self._patch_map.shape[1],0)
+        
+        if (pad_left + pad_right + pad_top + pad_bottom) > 0:
+            k_neighbours = np.pad(k_neighbours,((pad_left, pad_right),(pad_top, pad_bottom)),mode='empty')
+        
+        k_neighbours_mask = (k_neighbours != None).astype(int)          
         return k_neighbours, k_neighbours_mask
         
 

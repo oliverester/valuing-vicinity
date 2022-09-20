@@ -1,14 +1,14 @@
 
 print_labels = {
     "cyst": "Cyst",
-    "tumor_bleeding": "Tumour Bleeding", 
-    "tumor_necrosis": "Tumour Necrosis", 
-    "tumor_vital": "Tumour Vital", 
+    "tumor_bleeding": "Tumour bleeding", 
+    "tumor_necrosis": "Tumour necrosis", 
+    "tumor_vital": "Tumour vital", 
     "extrarenal": "Extrarenal", 
     "cortex": "Cortex", 
     "angioinvasion": "Angioinvasion", 
     "mark": "Mark", 
-    "tumor_regression": "Tumour Regression", 
+    "tumor_regression": "Tumour regression", 
     "capsule": "Capsule"}
 
 from collections import defaultdict
