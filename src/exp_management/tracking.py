@@ -798,7 +798,8 @@ class Visualizer():
                 if section[x,y] is None:
                     continue
                 patches_canvas_draw.text((patch_size*x, patch_size*y), str(section[x,y].get_coordinates()))
-                
+        
+        
         patches_canvas.save(Path(log_path) / f'patch_area_{center_x}_{center_y}_{wsi_name}_k{l}_{mode}.png')        
         patches_canvas = patches_canvas.resize((100*l,100*l),PIL.Image.ANTIALIAS)
         patches_canvas.save(Path(log_path) / f'patch_area_{center_x}_{center_y}_{wsi_name}_k{l}_{mode}_small.png')

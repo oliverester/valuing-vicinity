@@ -87,7 +87,7 @@ def train_epoch(exp: Experiment,
         if epoch > 0:
             # initialize patch memory for train/val set
             model.block_memory = False
-            model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu)
+            model.initialize_memory(**data_loader.dataset.wsi_dataset.memory_params, gpu=args.gpu if not exp.args.memory_to_cpu else None)
             model.fill_memory(data_loader=big_data_loader, gpu=args.gpu, debug=False)
         else:
             model.block_memory = True # block to not query it in first epoch (e.g. in evalution phase)

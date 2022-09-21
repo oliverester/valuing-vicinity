@@ -102,7 +102,7 @@ def attention_analysis(exp,
                                                           dataset_type=AttentionPatchesDistAnalysisDataset)
             
             # fill memory
-            model.initialize_memory(**wsi.meta_data['memory'], gpu=exp.args.gpu)
+            model.initialize_memory(**wsi.meta_data['memory'], gpu=exp.args.gpu if not exp.args.memory_to_cpu else None)
             model.fill_memory(data_loader=wsi_loader, gpu=exp.args.gpu)
             
             # get neighbourhood class distribution (_dists)

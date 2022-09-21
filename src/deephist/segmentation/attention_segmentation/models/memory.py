@@ -29,7 +29,7 @@ class Memory(torch.nn.Module):
             D (int): Dimension of embedding
             k (int): Neighbourhood size
             is_eval (bool): flag to control val/train memory
-            gpu (int): GPU device to use
+            gpu (int): GPU device to use. If None, stays on CPU memory.
             n_p (int): Number of total patches that will be added to the memory. Only needed for sanity check. Optional.
         """
         super().__init__()
@@ -71,13 +71,17 @@ class Memory(torch.nn.Module):
         return wrapper
     
     def _initialize_emb_memory(self, gpu: int):
+        if gpu is None:
+            device = "cpu"
+        else:
+            device = f"cuda:{gpu}"
         # plus k-boarder on each side
         memory = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k, self.D), 
                                 fill_value=0,
-                                dtype=torch.float32, device=f"cuda:{gpu}")
+                                dtype=torch.float32, device=device)
         mask = torch.full(size=(self.n_w, self.n_x+2*self.k, self.n_y+2*self.k), 
                                 fill_value=0,
-                                dtype=torch.float32, device=f"cuda:{gpu}")
+                                dtype=torch.float32, device=device)
     
         logging.getLogger('exp').info(f"Creating embedding memory with dim: {memory.shape}")
         size_in_gb = (memory.element_size() * memory.nelement()) / 1024 / 1024 / 1024
@@ -127,11 +131,6 @@ class Memory(torch.nn.Module):
         
         self._ready = True
         
-    def to_gpu(self,
-               gpu):
-        self._memory = self._memory.cuda(gpu, non_blocking=False)
-        self._mask = self._mask.cuda(gpu, non_blocking=False)
-
     @_ensure_mode
     def update_embeddings(self,
                           embeddings: torch.Tensor,

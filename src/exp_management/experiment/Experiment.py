@@ -2,9 +2,9 @@
 Experiment offers help to manage configs and tracking of ML-experiments
 """
 
+from collections import defaultdict
 import datetime
 import logging
-from multiprocessing import current_process
 from pathlib import Path
 from typing import Counter, Dict, List, Type
 import warnings
@@ -139,51 +139,69 @@ class Experiment(metaclass=ABCMeta):
     
     def merge_fold_logs(self, fold_logs: List[Dict]):
         logging.getLogger('exp').info("Merge folds..")
-        val_scores = {'wsi_mean_dice_scores': [], 
-                       'class_mean_dice_scores': [], 
-                       'wsi_mean_jaccard_scores': [], 
-                       'class_mean_jaccard_scores': [], 
-                       'wsi_mean_precision': [],
-                       'class_mean_precision': [],
-                       'wsi_mean_recall': [],
-                       'class_mean_recall': [], 
-                       'global_dice_score': []}
         
-        test_scores = {'wsi_mean_dice_scores': [], 
-                       'class_mean_dice_scores': [], 
-                       'wsi_mean_jaccard_scores': [], 
-                       'class_mean_jaccard_scores': [], 
-                       'wsi_mean_precision': [],
-                       'class_mean_precision': [],
-                       'wsi_mean_recall': [],
-                       'class_mean_recall': [], 
-                       'global_dice_score': []}
-         
+        metrics = ['wsi_mean_dice_scores', 
+                    'class_mean_dice_scores', 
+                    'wsi_mean_jaccard_scores', 
+                    'class_mean_jaccard_scores', 
+                    'wsi_mean_precision',
+                    'class_mean_precision',
+                    'wsi_mean_recall',
+                    'class_mean_recall', 
+                    'global_dice_score']
+        
+        test_scores = defaultdict(list)
+        val_scores = defaultdict(list)
         scores = {'vali_best': val_scores,
                   'test': test_scores}
         
         # fuse vali_best + test scores
         for fold in range(len(fold_logs)):
             for phase in ['vali_best', 'test']:
-                for score in scores[phase].keys():
-                    scores[phase][score].append(fold_logs[fold][f'evaluation_wsi_{phase}_set'][score])
+                for metric in metrics:
+                    scores[phase][metric].append(fold_logs[fold][f'evaluation_wsi_{phase}_set'][metric])
+      
+        # log score per class
+        cls_test_scores = defaultdict(list)
+        cls_val_scores = defaultdict(list)    
+        cls_scores = {'vali_best': cls_val_scores,
+                      'test': cls_test_scores}
         
+        for fold in range(len(fold_logs)):
+            for phase in ['vali_best', 'test']:
+                for cls, score in fold_logs[fold][f'evaluation_wsi_{phase}_set']['mean_dice_scores_per_class'].items():
+                    metric = f'wsi_{cls}_dice_scores'
+                    cls_scores[phase][metric].append(score)
+                
         # mean / std
         for phase in ['vali_best', 'test']:
+            # back to dict
+            cls_scores[phase] = dict(cls_scores[phase])
+            scores[phase] = dict(scores[phase])
             for score in scores[phase].keys():
                 assert len(scores[phase][score]) == len(fold_logs) , 'not all metrics of all folds found'
                 scores[phase][score] = {'mean': np.round(np.nanmean(np.array(scores[phase][score])),4).item(),
                                         'std': np.round(np.nanstd(np.array(scores[phase][score])),4).item()}
+            for score in cls_scores[phase].keys():
+                assert len(cls_scores[phase][score]) == len(fold_logs) , 'not all metrics of all folds found'
+                cls_scores[phase][score] = {'mean': np.round(np.nanmean(np.array(cls_scores[phase][score])),4).item(),
+                                        'std': np.round(np.nanstd(np.array(cls_scores[phase][score])),4).item()}
         
-        self.exp_log(fold_aggregates=scores) 
         # log to tensorboard
         writer = SummaryWriter(self.log_path)
         for phase in ['vali_best', 'test']:
             for score in scores[phase].keys():
                 writer.add_scalar(tag=f'fold_aggregation/{phase}_fold_mean_{score}',
                                   scalar_value=scores[phase][score]['mean'])
+            for score in cls_scores[phase].keys():
+                writer.add_scalar(tag=f'fold_aggregation_class/{phase}_fold_mean_{score}',
+                                  scalar_value=cls_scores[phase][score]['mean'])
         
         writer.close()
+        
+        self.exp_log(fold_aggregates=scores) 
+        self.exp_log(fold_class_aggregates=cls_scores) 
+
         
     def get_log(self) -> Dict:
         if self.logfile_path.exists():

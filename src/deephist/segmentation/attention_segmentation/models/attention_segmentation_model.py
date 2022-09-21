@@ -323,6 +323,11 @@ class AttentionSegmentationModel(torch.nn.Module):
                 else: 
                     # query memory for context information
                     neighbour_embeddings, neighbour_masks = self.memory.get_k_neighbour_embeddings(neighbours_idx=neighbours_idx)
+                    # ensure query result is on gpu:
+                    if not neighbour_embeddings.is_cuda:
+                        neighbour_embeddings = neighbour_embeddings.to(embeddings.device)
+                        neighbour_masks = neighbour_masks.to(embeddings.device)
+                    
                 
                 embeddings = torch.unsqueeze(embeddings, 1)
 

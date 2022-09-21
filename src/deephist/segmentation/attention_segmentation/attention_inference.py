@@ -25,7 +25,7 @@ def do_inference(data_loader: torch.utils.data.DataLoader,
         if not args.wsi_batch:
             model.eval()
         if not model.block_memory:
-            model.initialize_memory(**data_loader.dataset.wsi_dataset.meta_data['memory'], gpu=gpu)
+            model.initialize_memory(**data_loader.dataset.wsi_dataset.meta_data['memory'], gpu=gpu if not args.memory_to_cpu else None)
             model.fill_memory(data_loader=data_loader, gpu=gpu)
         else:
             warnings.warn("Attention inference but memory is blocked")

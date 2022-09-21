@@ -37,7 +37,7 @@ def evaluate_details(patch_coordinates,
                 wsi_loader = exp.data_provider.get_wsi_loader(wsi=selected_wsi)
                 
                 # fill memory
-                model.initialize_memory(**selected_wsi.meta_data['memory'], gpu=exp.args.gpu)
+                model.initialize_memory(**selected_wsi.meta_data['memory'], gpu=exp.args.gpu if not exp.args.memory_to_cpu else None)
                 model.fill_memory(data_loader=wsi_loader, gpu=exp.args.gpu)
                    
                 outputs, labels, attentions, n_masks, _ = memory_inference(data_loader=wsi_loader,
@@ -88,16 +88,20 @@ def evaluate_details(patch_coordinates,
                      
                 # select patches from inference definition
                 for x, y in patch_coordinates:
-                    patch = selected_wsi.get_patch_from_position(x,y)
-                    if patch is None:
-                        logging.getLogger('exp').info(f"Patch {x}, {y} does not exist.")
-                        continue
-                    
-                    context_patches, _  = patch.get_neighbours(k=include_radius)
-                    context_patches_list = [p for p in list(context_patches.flatten()) if p is not None]
-                    
-                    if len(context_patches_list) == 0:
-                        continue
+                    # if None -> total WSI 
+                    if x is None and y is None:
+                        context_patches = selected_wsi._patch_map
+                    else:
+                        patch = selected_wsi.get_patch_from_position(x,y)
+                        if patch is None:
+                            logging.getLogger('exp').info(f"Patch {x}, {y} does not exist.")
+                            continue
+                        
+                        context_patches, _  = patch.get_neighbours(k=include_radius)
+                        context_patches_list = [p for p in list(context_patches.flatten()) if p is not None]
+                        
+                        if len(context_patches_list) == 0:
+                            continue
                     
                     # pred + est
                     viz.plot_wsi_section(section=context_patches,
@@ -116,6 +120,7 @@ def evaluate_details(patch_coordinates,
                     viz.plot_wsi_section(section=context_patches,
                                         mode='pred',
                                         log_path=log_path)
+
                     # att + gt
                     viz.plot_wsi_section(section=context_patches,
                                         mode='gt',

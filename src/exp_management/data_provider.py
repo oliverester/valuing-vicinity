@@ -589,10 +589,15 @@ class CvSet():
                                    if idx not in range(lbl_split[fold][0],lbl_split[fold][1])]
                 
                 # now split a validation set using val-split:
-                lbl_val_wsis = random.sample(population=lbl_train_wsis, k = math.ceil(len(lbl_train_wsis) * self.val_ratio))
-                
+                if self.val_ratio is not None:
+                    lbl_val_wsis = random.sample(population=lbl_train_wsis, k = math.ceil(len(lbl_train_wsis) * self.val_ratio))
+                    val_wsis.extend(lbl_val_wsis)
+                else:
+                    # in special case for CY16, we want to use the same WSIs for validation/testing due to little data
+                    lbl_val_wsis = lbl_test_wsis
+                    val_wsis.extend(lbl_val_wsis)
+                    
                 train_wsis.extend([wsi for wsi in lbl_train_wsis if wsi not in lbl_val_wsis])
-                val_wsis.extend(lbl_val_wsis)
 
                 fold_splits[fold]['train'][lbl] = [wsi.name for wsi in lbl_train_wsis]
                 fold_splits[fold]['val'][lbl] = [wsi.name for wsi in lbl_val_wsis]

@@ -193,6 +193,8 @@ class AttentionSegmentationConfig(Config):
                             help='Set to enforece wsi-oriented batching.')
         parser.add_argument('--helper-loss', action='store_true', default=False,
                             help='Set to enable class distribution helper loss.')
+        parser.add_argument('--memory-to-cpu', action='store_true', default=False,
+                            help='Set to move memory to cpu RAM.')
         
         parser.add_argument('--conf_file', default=None, type=str,
                             help='Dummy var for conf file')
