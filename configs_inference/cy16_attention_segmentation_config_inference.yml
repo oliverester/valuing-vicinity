@@ -1,0 +1,4 @@
+test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/train/CAMELYON_d2_train
+reload-model-folder: logdir_paper/configs_paper/configs_cy16/attention/deeplab_resnet18/a_d2_k8_deeplab_config-2022-09-19_11_22_36_5
+gpu: 3
+#folds: [3]

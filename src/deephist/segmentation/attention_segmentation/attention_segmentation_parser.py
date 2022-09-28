@@ -81,8 +81,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--include-classes', default=['0', '1', '2', '3', '7', '8', '9', '10', '13', '15', '16', '17'], nargs="*", type=str,
                             help='Select class indices of patch class to be included')
         parser.add_argument('--nfold', default=None, type=int,
-                            help='Select the number of cv folds. If nfold is set - '
-                            'val_ratio will be ignored.')
+                            help='Select the number of cv folds.')
         parser.add_argument('--folds', default=None, nargs="*", type=int,
                             help='Select folds to run specifically. If None, runs all folds. Default None')
         parser.add_argument('--draw-patches-per-class', default=None, type=int,
@@ -115,7 +114,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--use-ce-weights', action='store_true',
                             help='Set to use ce weights.')
         parser.add_argument('--combine-weight', type=float, default=0.5,
-                            help='Loss combination weight.')
+                            help='Loss combination weight. Weight for base loss. Caveat: lambda in paper is 1-combine-weight.')
         parser.add_argument('--combine-criterion-after-epoch', default=None, type=int,
                             help='Select epoch after which to start combining a combined criterion.')
         parser.add_argument('--alpha', type=float, default=0.5,
@@ -181,7 +180,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--log-details', action='store_true',
                             help='Set to log computation-intense metrics.')
         parser.add_argument('--performance-metric', default='loss', type=str,
-                            choices= ['loss', 'dice'],
+                             choices= ['loss', 'dice'],
                             help='Select a performance metric for early stopping and model selection.')
         parser.add_argument('--multiscale-on', action='store_true',
                             help='Set to run with multiscale model from Schmitz et al.')

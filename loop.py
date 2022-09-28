@@ -1,3 +1,7 @@
+# call from terminal:
+# python loop.py
+
+
 from functools import partial
 import logging
 import logging.config

@@ -1,3 +1,6 @@
+# call in terminal, e.g.:
+# python main.py --conf_file configs_paper/configs_cy16/attention/deeplab_resnet18/a_d2_k8_deeplab_no_help_config.yml --gpu 4
+
 import argparse
 import sys
 import traceback
@@ -25,3 +28,5 @@ if __name__ == '__main__':
     except Exception as e:
         print(traceback.format_exc())
         sys.exit(e)                     
+
+

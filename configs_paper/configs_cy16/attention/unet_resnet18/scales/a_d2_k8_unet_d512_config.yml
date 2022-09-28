@@ -25,7 +25,7 @@ early-stopping-epochs: 10
 criterion: 'cross_entropy'
 use-ce-weights: false
 overlay-polygons: true
-embedding-dim: 1024
+embedding-dim: 512
 k-neighbours: 8
 use-ln: true
 emb-dropout: 0
@@ -42,4 +42,3 @@ performance-metric: loss
 attention-on: true
 helper-loss: true
 combine-weight: 0.8
-memory-to-cpu: true
