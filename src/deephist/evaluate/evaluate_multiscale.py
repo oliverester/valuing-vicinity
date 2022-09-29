@@ -1,6 +1,7 @@
 
 import logging
 from pathlib import Path
+import torch 
 
 from src.deephist.segmentation.multiscale_segmentation.multiscale_inference import do_inference
 from src.exp_management.experiment.SegmentationExperiment import SegmentationExperiment
@@ -32,6 +33,10 @@ def evaluate_details(patch_coordinates,
                 for x, y in patch_coordinates:
                     try:
                         patch = selected_wsi.get_patch_from_position(x,y)
+                        if patch is None:
+                            logging.getLogger('exp').info(f"Patch {x}, {y} does not exist.")
+                            continue
+                        
                         context_patches, _  = patch.get_neighbours(k=include_radius)
                         
                         patches = [p for p in list(context_patches.flatten()) if p is not None]
@@ -41,6 +46,8 @@ def evaluate_details(patch_coordinates,
                         outputs, labels = do_inference(data_loader=patches_loader,
                                                        model=model,
                                                        gpu=exp.args.gpu)  
+                        outputs, labels = torch.cat(outputs), torch.cat(labels)
+
                         # append results to patch object
                         for i, patch in enumerate(patches):
                             patch.prediction = exp.mask_to_img(mask=outputs[i],
@@ -65,7 +72,6 @@ def evaluate_details(patch_coordinates,
                     except Exception as e:
                         logging.getLogger('exp').error(f"Could not visualize patch {x}, {y} of WSI {wsi_name}")
                         raise e
-
     
 if __name__ == "__main__":
 

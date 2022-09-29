@@ -1,0 +1,4 @@
+test-data: /homes/oester/repositories/prae/data/segmentation/preprocessed/q
+reload-model-folder: logdir_paper/configs_paper/configs_cy16/semantic/unet_resnet18/d2_unet_config-2022-08-26_15_03_15_5
+gpu: 1
+folds: [3]

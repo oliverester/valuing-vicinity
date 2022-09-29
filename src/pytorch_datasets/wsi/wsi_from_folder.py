@@ -234,6 +234,8 @@ class WSIFromFolder():
 
         if pad_size is not None:
             patch_map = np.pad(patch_map, pad_size, mode='empty')
+        else:
+            pad_size = 0
         
         return patch_map, pad_size
     
