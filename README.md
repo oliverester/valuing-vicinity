@@ -1,10 +1,10 @@
 # Valuing Vicinity
 
-This is the official Pytorch implementation of the WSI segmentation algorithm using the memory attention framework from ["Valuing Vicinity: Memory Attention Framework for Context-Based Semantic Segmentation in Histopathology"][vv_paper_link]  (Oliver Ester, Fabian Hörst, Constantin Seibold, Julius Keyl, Saskia Ting, Nikolaos Vasileiadis, Jessica Schmitz, Philipp Ivanyi, Viktor Grünwald, Jan Hinrich Bräsen, Jan Egger, Jens Kleesiek, arxiv, 2022).
+This is the official PyTorch implementation of the WSI segmentation algorithm using the memory attention framework from ["Valuing Vicinity: Memory Attention Framework for Context-Based Semantic Segmentation in Histopathology"][vv_paper_link]  (Oliver Ester, Fabian Hörst, Constantin Seibold, Julius Keyl, Saskia Ting, Nikolaos Vasileiadis, Jessica Schmitz, Philipp Ivanyi, Viktor Grünwald, Jan Hinrich Bräsen, Jan Egger, Jens Kleesiek, arxiv, 2022).
 
-The novel approach compresses patches of WSIs into an embedding memory and during training allows the model to learn querying this memory for context information in the neighbourhood of each WSI patch using an attention mechanism.
+The novel approach compresses patches of WSIs into an embedding memory and enables the model to learn querying the memory for context information in the neighbourhood of each WSI patch using an attention mechanism.
 
-<img src="./viz/matnetv2.png" width="500px"></img>
+<img src="./viz/matnetv2.png" width="700px"></img>
 
 # Usage
 
@@ -111,7 +111,7 @@ The folder `configs_paper` contains all configurations that we trained and evalu
 Ensure all requirements from the `requirements.txt` file are met.
 To start training, run `python main.py --conf_file <path-to-configuration-file>`.
 
-The results will be looged into the `logdir` directory.
+The results will be logged into the `logdir` directory.
 
 ## Example
 
