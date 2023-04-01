@@ -70,7 +70,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--logdir', default='logdir', type=str, help='path to store logs.')
         parser.add_argument('--label-map-file', default=None, type=str,
                             help='path to label mapping json')
-        parser.add_argument('--patch-label-type', default='patch', type=str, choices= ['patch', 'image', 'mask'],
+        parser.add_argument('--patch-label-type', default='mask', type=str, choices= ['patch', 'image', 'mask'],
                             help='Select which label you want to plot for each patch representation')
         parser.add_argument('--pretrained', action='store_true',
                             help='select to start training with Imagenet-pretrained weights')
@@ -107,14 +107,14 @@ class AttentionSegmentationConfig(Config):
                             help='Select contrast for pytorch jitter-transform in trainset.')
         parser.add_argument('--augment', action='store_true',
                             help='select to apply augmentations.')
-        parser.add_argument('--criterion', default=None, type=str,
+        parser.add_argument('--criterion', default='cross_entropy', type=str,
                             choices= ['cross_entropy', 'focal_tversky', 'dice', 'focal',
                                       'focal+dice', 'focal+focal_tversky', 'ce+dice'],
                             help='Select a loss function. If None, uses CrossEntropy')
         parser.add_argument('--use-ce-weights', action='store_true',
                             help='Set to use ce weights.')
         parser.add_argument('--combine-weight', type=float, default=0.5,
-                            help='Loss combination weight. Weight for base loss. Caveat: lambda in paper is 1-combine-weight.')
+                            help='Loss combination weight. Weight for base loss.')
         parser.add_argument('--combine-criterion-after-epoch', default=None, type=int,
                             help='Select epoch after which to start combining a combined criterion.')
         parser.add_argument('--alpha', type=float, default=0.5,
@@ -153,7 +153,7 @@ class AttentionSegmentationConfig(Config):
                             help='Select number of neighbouring patches to attend to.')
         parser.add_argument('--context-conv', default=1, type=int,
                             help='Select kernel size of context convolution. Default to 1x1.')
-        parser.add_argument('--num-attention-heads', default=None, type=int,
+        parser.add_argument('--num-attention-heads', default=8, type=int,
                             help='Select number of attention heads for MSA.')
         parser.add_argument('--attention-hidden-dim', default=1024, type=int,
                             help='Select number of MSA hidden dimension (after linear proj.).')
@@ -162,7 +162,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--transformer-depth', default=4, type=int,
                             help='Select transformer depth (layers).')
         parser.add_argument('--emb-dropout', type=float, default=0,
-                            help='Select transformer embedding dropout')
+                            help='Select transformer/msa embedding dropout')
         parser.add_argument('--att-dropout', type=float, default=0,
                             help='Select MHA/transformer dropout (mlp & att)')
         parser.add_argument('--use-ln', action='store_true',
@@ -187,7 +187,7 @@ class AttentionSegmentationConfig(Config):
         parser.add_argument('--sample-size', default=None, type=int,
                             help='Select a WSI sample size (e.g. for debugging).')
         parser.add_argument('--fill-in-eval', action='store_true', default=False,
-                            help='Set to always fill model in evaluation mode.')
+                            help='Set to always fill memory in evaluation mode.')
         parser.add_argument('--wsi-batch', action='store_true', default=False,
                             help='Set to enforece wsi-oriented batching.')
         parser.add_argument('--helper-loss', action='store_true', default=False,
